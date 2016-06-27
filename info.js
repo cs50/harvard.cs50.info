@@ -18,7 +18,13 @@ define(function(require, exports, module) {
         var api = imports.api;
         var c9 = imports.c9;
         var workspace = imports["collab.workspace"];
-
+        var _ = require("lodash");
+        
+        // Templates
+        var INFO_TEMP = require("text!./templates/info.template");
+        var HOST_TEMP = _.template('<a href="//<%= host %>/"target="_blank" style="color:DodgerBlue"><%= protocol %>//<%= host %>/</a>');
+        var SQL_TEMP = _.template('<a href="//<%= user %>:<%= password %>@<%= pma %>/" target="_blank" style="color:DodgerBlue"><%= protocol %>//<%= pma %>/</a>');
+        
         /***** Initialization *****/
 
         var plugin = new Dialog("CS50", main.consumes, {
@@ -315,15 +321,34 @@ define(function(require, exports, module) {
                 else {
                     html.passwd.innerHTML = RUN_MESSAGE;
                 }
-
-                html.hostname.innerHTML = '<a href="//'+ stats.host +
-                    '/" target="_blank">' + location.protocol + "//" +
-                    stats.host + '/</a>';
-
+                
+                // Template for server URL
+                html.hostname.innerHTML = HOST_TEMP({
+                    'host': stats.host, 'protocol': location.protocol});
+                
+                // Template for mysql URL
                 var pma = stats.host + '/phpmyadmin';
-                html.phpmyadmin.innerHTML = '<a href="//' + pma +
-                    '/" target="_blank">' + location.protocol + "//" + pma +
-                    '/</a>';
+                html.phpmyadmin.innerHTML = SQL_TEMP({
+                    'user': stats.user, 'password': stats.passwd, 
+                    'pma': pma, 'protocol': location.protocol});
+                
+                // Add workspace owner and user, if applicable
+                if(!stats.hasOwnProperty("offline") 
+                  || !stats.hasOwnProperty("c9user")
+                  || !stats.hasOwnProperty("c9project")) {
+                    html.owner.innerHTML = "Please run update50!";
+                    html.name.innerHTML = "Please run update50!";
+                }
+                else if (stats.offline === "false") {
+                    html.owner.innerHTML = stats.c9user;
+                    html.name.innerHTML = stats.c9project;
+                }
+                else {
+                    html.owner.innerHTML = "not applicable for offline IDEs";
+                    html.name.innerHTML = "not applicable for offline IDEs";
+                    html.owner.style.backgroundColor = "gray";
+                    html.name.style.backgroundColor = "gray";
+                }
             }
         }
 
@@ -403,14 +428,7 @@ define(function(require, exports, module) {
          */
         plugin.on("draw", function(e) {
 
-            e.html.innerHTML =
-                '<p id="info">...</p>' +
-                '<table id="stats"><col width="110">' +
-                '<tr><td><strong>Web Server</strong></td><td id="hostname">...</td></tr>' +
-                '<tr><td><strong>phpMyAdmin</strong></td><td id="phpmyadmin">...</td></tr>' +
-                '<tr><td><strong>MySQL Username</strong></td><td id="user">...</td></tr>' +
-                '<tr><td><strong>MySQL Password</strong></td><td id="passwd">...</td></tr>' +
-                '</table>';
+            e.html.innerHTML = INFO_TEMP;
 
             // Prevents column wrapping in any instance
             e.html.style.whiteSpace = "nowrap";
@@ -420,7 +438,7 @@ define(function(require, exports, module) {
 
             // find & connect to all of the following in the dialog's DOM
             var els = ["version", "hostname", "phpmyadmin", "info",
-                       "stats", "user", "passwd"];
+                       "stats", "user", "passwd", "offline", "owner", "name"];
             html = {};
             for (var i = 0, j = els.length; i < j; i++)
                 html[els[i]] = e.html.querySelector("#" + els[i]);

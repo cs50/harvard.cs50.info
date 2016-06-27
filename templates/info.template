@@ -1,0 +1,8 @@
+<p id="info">...</p><table id="stats"><col width="110">
+<tr><td><strong>Web Server</strong></td><td id="hostname">...</td></tr>
+<tr><td><strong>phpMyAdmin</strong></td><td id="phpmyadmin">...</td></tr>
+<tr><td><strong>MySQL Username</strong></td><td id="user">...</td></tr>
+<tr><td><strong>MySQL Password</strong></td><td id="passwd">...</td></tr>
+<tr><td><strong>Workspace owner</strong></td><td id="owner">...</td></tr>
+<tr><td><strong>Workspace name</strong></td><td id="name">...</td></tr>
+</table>
