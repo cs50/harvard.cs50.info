@@ -386,6 +386,17 @@ define(function(require, exports, module) {
             }
         }
 
+        /**
+         * Toggles visibility of version number.
+         *
+         * @param {boolean} show version visibility flag
+         */
+        function showVersion(show) {
+            if (!_.isObject(versionBtn) || !_.isBoolean(show))
+                return;
+            versionBtn.setAttribute("visible", show);
+        }
+
         /*
          * Toggle the display of the stats dialog
          */
@@ -574,6 +585,13 @@ define(function(require, exports, module) {
              * Hide the plugin
              */
             hide: plugin.hide,
+
+            /**
+             * Toggles visibility of version number.
+             *
+             * @param {boolean} show version visibility flag
+             */
+            showVersion: showVersion,
         });
 
         register(null, {
