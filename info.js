@@ -1,7 +1,8 @@
 define(function(require, exports, module) {
     main.consumes = [
         "api", "c9", "collab.workspace", "commands", "console", "Dialog",
-        "layout", "menus", "Plugin", "preferences", "proc", "settings", "ui"
+        "dialog.notification", "layout", "menus", "Plugin", "preferences",
+        "proc", "settings", "ui"
     ];
     main.provides = ["harvard.cs50.info"];
     return main;
@@ -16,6 +17,7 @@ define(function(require, exports, module) {
         var prefs = imports.preferences;
         var proc = imports.proc;
         var settings = imports.settings;
+        var showNotification = imports["dialog.notification"].show;
         var ui = imports.ui;
         var workspace = imports["collab.workspace"];
 
@@ -50,6 +52,7 @@ define(function(require, exports, module) {
         var fetching;               // are we fetching data
         var html = null;            // object with references to html els
         var showing;                // is the dialog showing
+        var notifying = false;      // is update50 notification showing
         var stats = null;           // last recorded stats
         var timer = null;           // javascript interval ID
         var domain = null;          // current domain
@@ -161,8 +164,9 @@ define(function(require, exports, module) {
 
             // create version button
             versionBtn = new ui.button({
+                caption: "n/a",
                 skin: "c9-menu-btn",
-                visible: false
+                tooltip: "Version"
             });
             versionBtn.setAttribute("class", "cs50-info-version");
 
@@ -280,8 +284,14 @@ define(function(require, exports, module) {
                            " (" + err.code + ")</em><br /><br />"+ RUN_MESSAGE;
                 }
 
-                // notify user through button text
-                versionBtn.$ext.innerHTML = RUN_MESSAGE;
+                // notify user to update50
+                if (notifying === false) {
+                    showNotification(
+                        '<div class="cs50-notification">' + RUN_MESSAGE + '</div>',
+                        true
+                    );
+                    notifying = true;
+                }
 
                 // update dialog with error
                 stats = {"error": long};
@@ -289,12 +299,13 @@ define(function(require, exports, module) {
                 return;
             }
 
+            notifying = false;
+
             // parse the JSON returned by info50 output
             stats = JSON.parse(stdout);
 
             // update UI
             versionBtn.setCaption(stats.version);
-            versionBtn.show();
             updateDialog();
         }
 
