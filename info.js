@@ -3,7 +3,7 @@ define(function(require, exports, module) {
         "api", "c9", "collab.workspace", "commands", "console", "Dialog",
         "layout", "menus", "Plugin", "preferences", "proc", "settings", "ui"
     ];
-    main.provides = ["cs50.info"];
+    main.provides = ["harvard.cs50.info"];
     return main;
 
     function main(options, imports, register) {
@@ -566,7 +566,7 @@ define(function(require, exports, module) {
         });
 
         register(null, {
-            "cs50.info": plugin
+            "harvard.cs50.info": plugin
         });
     }
 });
