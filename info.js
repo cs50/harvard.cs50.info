@@ -387,14 +387,21 @@ define(function(require, exports, module) {
         }
 
         /**
-         * Toggles visibility of version number.
-         *
-         * @param {boolean} show version visibility flag
+         * Hides version number.
          */
-        function showVersion(show) {
-            if (!_.isObject(versionBtn) || !_.isBoolean(show))
+        function hideVersion() {
+            if (!versionBtn)
                 return;
-            versionBtn.setAttribute("visible", show);
+            versionBtn.hide();
+        }
+
+        /**
+         * Shows version number.
+         */
+        function showVersion() {
+            if (!versionBtn)
+                return;
+            versionBtn.show();
         }
 
         /*
@@ -587,9 +594,12 @@ define(function(require, exports, module) {
             hide: plugin.hide,
 
             /**
-             * Toggles visibility of version number.
-             *
-             * @param {boolean} show version visibility flag
+             * Hides version number.
+             */
+            hideVersion: hideVersion,
+
+            /**
+             * Shows version number.
              */
             showVersion: showVersion,
         });
