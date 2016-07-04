@@ -1,6 +1,6 @@
 # Info50 Plugin
 
-This plugin (**cs50.info**) accesses information about a CS50 
+This plugin (**harvard.cs50.info**) accesses information about a CS50 
 IDE workspace in a GUI. It is also used for controlling which domains
 can preview a local server (as given by apache50).
 

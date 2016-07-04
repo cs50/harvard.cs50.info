@@ -1,30 +1,38 @@
 define(function(require, exports, module) {
     main.consumes = [
-        "Plugin", "ui", "commands", "menus", "settings", "layout", "Dialog",
-        "proc", "preferences", "collab.workspace", "api", "c9", "console"
+        "api", "c9", "collab.workspace", "commands", "console", "Dialog",
+        "dialog.notification", "layout", "menus", "Plugin", "preferences",
+        "proc", "settings", "ui"
     ];
-    main.provides = ["cs50.info"];
+    main.provides = ["harvard.cs50.info"];
     return main;
 
     function main(options, imports, register) {
-        var ui = imports.ui;
-        var menus = imports.menus;
-        var commands = imports.commands;
-        var layout = imports.layout;
-        var Dialog = imports.Dialog;
-        var proc = imports.proc;
-        var settings = imports.settings;
-        var prefs = imports.preferences;
         var api = imports.api;
         var c9 = imports.c9;
+        var commands = imports.commands;
+        var Dialog = imports.Dialog;
+        var layout = imports.layout;
+        var menus = imports.menus;
+        var prefs = imports.preferences;
+        var proc = imports.proc;
+        var settings = imports.settings;
+        var showNotification = imports["dialog.notification"].show;
+        var ui = imports.ui;
         var workspace = imports["collab.workspace"];
+
+        // https://lodash.com
         var _ = require("lodash");
-        
+
         // Templates
         var INFO_TEMP = require("text!./templates/info.template");
-        var HOST_TEMP = _.template('<a href="//<%= host %>/"target="_blank" style="color:DodgerBlue"><%= protocol %>//<%= host %>/</a>');
-        var SQL_TEMP = _.template('<a href="//<%= user %>:<%= password %>@<%= pma %>/" target="_blank" style="color:DodgerBlue"><%= protocol %>//<%= pma %>/</a>');
-        
+        var HOST_TEMP = _.template(
+            '<a href="//<%= host %>/"target="_blank" style="color:DodgerBlue"><%= protocol %>//<%= host %>/</a>'
+        );
+        var SQL_TEMP = _.template(
+            '<a href="//<%= user %>:<%= password %>@<%= pma %>/" target="_blank" style="color:DodgerBlue"><%= protocol %>//<%= pma %>/</a>'
+        );
+
         /***** Initialization *****/
 
         var plugin = new Dialog("CS50", main.consumes, {
@@ -34,7 +42,9 @@ define(function(require, exports, module) {
             title: "Services"
         });
 
-        var infoBtn, versionBtn;   // UI button
+        // UI buttons
+        var infoBtn;
+        var versionBtn;
 
         var RUN_MESSAGE = "It's time to run <tt>update50</tt>!"; // update50 message
         var DEFAULT_REFRESH = 30;   // default refresh rate
@@ -42,6 +52,7 @@ define(function(require, exports, module) {
         var fetching;               // are we fetching data
         var html = null;            // object with references to html els
         var showing;                // is the dialog showing
+        var notifying = false;      // is update50 notification showing
         var stats = null;           // last recorded stats
         var timer = null;           // javascript interval ID
         var domain = null;          // current domain
@@ -54,11 +65,11 @@ define(function(require, exports, module) {
             domain = window.location.hostname;
 
             // we only want the domain; e.g., "cs50.io" from "ide.cs50.io"
-            if (domain.substring(0, 3) == "ide")
+            if (domain.substring(0, 3) === "ide")
                 domain = domain.substring(4);
 
             // set default values
-            settings.on("read", function(){
+            settings.on("read", function() {
                 settings.setDefaults("user/cs50/info", [
                     ["refreshRate", DEFAULT_REFRESH]
                 ]);
@@ -71,18 +82,19 @@ define(function(require, exports, module) {
             // watch for settings change and update accordingly
             settings.on("write", function() {
                 // if theme changes, update dialog background color
-                if (html != null)
+                if (html !== null)
                     setBackgroundColor(html.stats.parentElement);
 
                 // fetch new rate, stopping timer to allow restart with new val
                 var rate = settings.getNumber("user/cs50/info/@refreshRate");
 
-                if (delay != rate) {
+                if (delay !== rate) {
                     // validate new rate, overwriting bad value if necessary
                     if (rate < 1) {
                         delay = DEFAULT_REFRESH;
                         settings.set("user/cs50/info/@refreshRate", delay);
-                    } else {
+                    }
+                    else {
                         delay = rate;
                     }
 
@@ -105,7 +117,7 @@ define(function(require, exports, module) {
             }, plugin);
 
             /* TODO: decide if wanted
-            // 
+            //
             commands.addCommand({
                 name: "update50",
                 group: "General",
@@ -128,14 +140,17 @@ define(function(require, exports, module) {
             }), 34, plugin);
 
             // load CSS for button
-            imports.ui.insertCss(require('text!./style.css'), options.staticPrefix, plugin);
+            imports.ui.insertCss(
+                require("text!./style.css"),
+                options.staticPrefix,
+                plugin
+            );
 
             // create CS50 button
             infoBtn = new ui.button({
                 command: "cs50infoDialog",
                 skin: "c9-menu-btn",
                 tooltip: "Services",
-                visible: true
             });
 
             // place CS50 button
@@ -149,10 +164,11 @@ define(function(require, exports, module) {
 
             // create version button
             versionBtn = new ui.button({
+                caption: "n/a",
                 skin: "c9-menu-btn",
-                visible: false
+                tooltip: "Version"
             });
-            versionBtn.setAttribute('class', 'cs50-info-version');
+            versionBtn.setAttribute("class", "cs50-info-version");
 
             // place version button
             ui.insertByIndex(layout.findParent({
@@ -187,7 +203,8 @@ define(function(require, exports, module) {
          * Stop automatic refresh of information by disabling JS timer
          */
         function stopTimer() {
-            if (timer == null) return;
+            if (timer === null)
+                return;
             window.clearInterval(timer);
             timer = null;
         }
@@ -196,7 +213,8 @@ define(function(require, exports, module) {
          * If not already started, begin a timer to automatically refresh data
          */
         function startTimer() {
-            if (timer != null) return;
+            if (timer !== null)
+                return;
             timer = window.setInterval(updateStats, delay * 1000);
         }
 
@@ -208,9 +226,10 @@ define(function(require, exports, module) {
                 if (err || workspace.myUserId != data.owner.id)
                     return;
 
-                settings.set("project/cs50/info/@public",
-                    data["visibility"] == "public" ||
-                    data["appAccess"] == "public");
+                settings.set(
+                    "project/cs50/info/@public",
+                    data["visibility"] === "public" || data["appAccess"] === "public"
+                );
             });
         }
 
@@ -219,17 +238,19 @@ define(function(require, exports, module) {
          */
         function updateStats(callback) {
             // respect the lock
-            if (fetching) return;
+            if (fetching)
+                return;
 
             fetching = true;
 
             // check for shared state
-            if (c9.hosted) fetchSharedStatus();
+            if (c9.hosted)
+                fetchSharedStatus();
 
             // hash that uniquely determines this client
             var myID = workspace.myUserId;
             var myClientID = workspace.myClientId;
-            var hash = myID + '-' + myClientID;
+            var hash = myID + "-" + myClientID;
 
             // extra buffer time for info50
             // refer to info50 for more documentation on this
@@ -250,11 +271,11 @@ define(function(require, exports, module) {
 
             if (err) {
                 var long;
-                if (err.code == "EDISCONNECT") {
+                if (err.code === "EDISCONNECT") {
                     // disconnected client: don't provide error
                     return;
                 }
-                else if (err.code == "ENOENT") {
+                else if (err.code === "ENOENT") {
                     // command not found
                     long = RUN_MESSAGE;
                 }
@@ -263,21 +284,28 @@ define(function(require, exports, module) {
                            " (" + err.code + ")</em><br /><br />"+ RUN_MESSAGE;
                 }
 
-                // notify user through button text
-                versionBtn.$ext.innerHTML = RUN_MESSAGE;
+                // notify user to update50
+                if (notifying === false) {
+                    showNotification(
+                        '<div class="cs50-notification">' + RUN_MESSAGE + '</div>',
+                        true
+                    );
+                    notifying = true;
+                }
 
                 // update dialog with error
-                stats = {"error":long};
+                stats = {"error": long};
                 updateDialog();
                 return;
             }
+
+            notifying = false;
 
             // parse the JSON returned by info50 output
             stats = JSON.parse(stdout);
 
             // update UI
             versionBtn.setCaption(stats.version);
-            versionBtn.show();
             updateDialog();
         }
 
@@ -286,9 +314,10 @@ define(function(require, exports, module) {
          */
         function updateDialog() {
             // confirm dialog elements have been created
-            if (html == null) return;
+            if (html === null)
+                return;
 
-            if (stats == null) {
+            if (stats === null) {
                 // no information fetched yet
                 html.info.innerHTML = "Please wait, fetching information...";
                 html.info.style.display = "block";
@@ -321,21 +350,26 @@ define(function(require, exports, module) {
                 else {
                     html.passwd.innerHTML = RUN_MESSAGE;
                 }
-                
+
                 // Template for server URL
                 html.hostname.innerHTML = HOST_TEMP({
-                    'host': stats.host, 'protocol': location.protocol});
-                
+                    host: stats.host,
+                    protocol: location.protocol
+                });
+
                 // Template for mysql URL
-                var pma = stats.host + '/phpmyadmin';
+                var pma = stats.host + "/phpmyadmin";
                 html.phpmyadmin.innerHTML = SQL_TEMP({
-                    'user': stats.user, 'password': stats.passwd, 
-                    'pma': pma, 'protocol': location.protocol});
-                
+                    user: stats.user,
+                    password: stats.passwd,
+                    pma: pma,
+                    protocol: location.protocol
+                });
+
                 // Add workspace owner and user, if applicable
-                if(!stats.hasOwnProperty("offline") 
-                  || !stats.hasOwnProperty("c9user")
-                  || !stats.hasOwnProperty("c9project")) {
+                if(!stats.hasOwnProperty("offline")
+                    || !stats.hasOwnProperty("c9user")
+                    || !stats.hasOwnProperty("c9project")) {
                     html.owner.innerHTML = "Please run update50!";
                     html.name.innerHTML = "Please run update50!";
                 }
@@ -350,6 +384,24 @@ define(function(require, exports, module) {
                     html.name.style.backgroundColor = "gray";
                 }
             }
+        }
+
+        /**
+         * Hides version number.
+         */
+        function hideVersion() {
+            if (!versionBtn)
+                return;
+            versionBtn.hide();
+        }
+
+        /**
+         * Shows version number.
+         */
+        function showVersion() {
+            if (!versionBtn)
+                return;
+            versionBtn.show();
         }
 
         /*
@@ -390,18 +442,21 @@ define(function(require, exports, module) {
          * Checks if user can preview local server
          */
         function canPreview() {
-            if (!c9.hosted) return true;
+            if (!c9.hosted)
+                return true;
 
-            if (settings.getBool("project/cs50/info/@public")) return true;
+            if (settings.getBool("project/cs50/info/@public"))
+                return true;
 
             // remove port from domain if present
-            if (!stats || typeof stats.host !== "string") return false;
+            if (!stats || typeof stats.host !== "string")
+                return false;
 
             var host = stats.host.split(":", 1)[0];
 
             // host must match, except c9 IDEs must be on c9users domain
-            return (domain == "c9.io" && host.endsWith("c9users.io")) ||
-                    host.endsWith(domain);
+            return (domain === "c9.io" && host.endsWith("c9users.io"))
+                || host.endsWith(domain);
         }
 
         /*
@@ -437,8 +492,10 @@ define(function(require, exports, module) {
             setBackgroundColor(e.html);
 
             // find & connect to all of the following in the dialog's DOM
-            var els = ["version", "hostname", "phpmyadmin", "info",
-                       "stats", "user", "passwd", "offline", "owner", "name"];
+            var els = [
+                "version", "hostname", "phpmyadmin", "info", "stats", "user",
+                "passwd", "offline", "owner", "name"
+            ];
             html = {};
             for (var i = 0, j = els.length; i < j; i++)
                 html[els[i]] = e.html.querySelector("#" + els[i]);
@@ -535,10 +592,20 @@ define(function(require, exports, module) {
              * Hide the plugin
              */
             hide: plugin.hide,
+
+            /**
+             * Hides version number.
+             */
+            hideVersion: hideVersion,
+
+            /**
+             * Shows version number.
+             */
+            showVersion: showVersion,
         });
 
         register(null, {
-            "cs50.info": plugin
+            "harvard.cs50.info": plugin
         });
     }
 });

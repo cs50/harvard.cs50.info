@@ -6,3 +6,10 @@
 .cs50-info-version {
     background-color: inherit !important;
 }
+
+/* update50 notification */
+.cs50-notification {
+    background-color: orange;
+    color: white;
+    padding: 10px;
+}
