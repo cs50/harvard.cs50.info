@@ -1,7 +1,7 @@
 define(function(require, exports, module) {
     main.consumes = [
         "api", "c9", "collab.workspace", "commands", "console", "Dialog",
-        "dialog.notification", "layout", "menus", "Plugin", "preferences",
+        "dialog.notification", "fs", "layout", "menus", "Plugin", "preferences",
         "proc", "settings", "ui"
     ];
     main.provides = ["harvard.cs50.info"];
@@ -65,7 +65,7 @@ define(function(require, exports, module) {
         var domain = null;          // current domain
         var BIN = "~/bin/";         // location of .info50 script
         var permissions = "755";    // permissions given to .info50 script
-
+        var VERSION_PATH = "project/cs50/info/@ver";
 
         function load() {
             showing = false;
@@ -202,14 +202,8 @@ define(function(require, exports, module) {
                 }
             }, plugin);
 
-            // fetch data
-            updateStats();
-
-            // always verbose, start timer
-            startTimer();
-
             // write most recent info50 script
-            var ver = settings.getNumber("user/cs50/info/@ver");
+            var ver = settings.getNumber(VERSION_PATH);
 
             if (isNaN(ver) || ver < INFO_VER) {
                 var content = require("text!./bin/info50");
@@ -219,7 +213,13 @@ define(function(require, exports, module) {
 
                     fs.chmod(BIN + ".info50", permissions, function(err){
                         if (err) return console.error(err);
-                        settings.set("user/cs50/info/@ver", INFO_VER);
+                        settings.set(VERSION_PATH, INFO_VER);
+
+                        // fetch data
+                        updateStats();
+            
+                        // always verbose, start timer
+                        startTimer();
                     });
                 });
             }
@@ -303,7 +303,7 @@ define(function(require, exports, module) {
                 }
                 else if (err.code == "ENOENT" || err.code == "EACCES") { 
                     long = RUN_MESSAGE;
-                    settings.set("user/cs50/info/@ver", 0);
+                    settings.set(VERSION_PATH, 0);
                     console.log(ERROR_TEMP({
                         action: "access",
                         code: permissions,
@@ -312,7 +312,7 @@ define(function(require, exports, module) {
                     }));
                 }
                 else {
-                    settings.set("user/cs50/info/@ver", 0);
+                    settings.set(VERSION_PATH, 0);
                     long = "Unknown error from workspace: <em>" + err.message +
                            " (" + err.code + ")</em><br /><br />"+ RUN_MESSAGE;
                 }
