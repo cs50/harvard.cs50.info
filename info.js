@@ -20,9 +20,12 @@ define(function(require, exports, module) {
         var showNotification = imports["dialog.notification"].show;
         var ui = imports.ui;
         var workspace = imports["collab.workspace"];
+        var fs = imports.fs;
 
         // https://lodash.com
         var _ = require("lodash");
+
+        var INFO_VER = 1;
 
         // Templates
         var INFO_TEMP = require("text!./templates/info.template");
@@ -31,6 +34,9 @@ define(function(require, exports, module) {
         );
         var SQL_TEMP = _.template(
             '<a href="//<%= user %>:<%= password %>@<%= pma %>/" target="_blank" style="color:DodgerBlue"><%= protocol %>//<%= pma %>/</a>'
+        );
+        var ERROR_TEMP = _.template(
+            'Could not <%= action %> <%= file %>. Try chmod <%= code %> <%= dir %>, chmod <%= code %> <%= file %>, then reload the page!'
         );
 
         /***** Initialization *****/
@@ -46,7 +52,8 @@ define(function(require, exports, module) {
         var infoBtn;
         var versionBtn;
 
-        var RUN_MESSAGE = "It's time to run <tt>update50</tt>!"; // update50 message
+        var RUN_MESSAGE = "Please reload your <tt>workspace</tt>!<br><br> \
+            <i>For more information, check for errors in your browser's javascript console</i>";
         var DEFAULT_REFRESH = 30;   // default refresh rate
         var delay;                  // current refresh rate
         var fetching;               // are we fetching data
@@ -56,6 +63,9 @@ define(function(require, exports, module) {
         var stats = null;           // last recorded stats
         var timer = null;           // javascript interval ID
         var domain = null;          // current domain
+        var BIN = "~/bin/";         // location of .info50 script
+        var permissions = "755";    // permissions given to .info50 script
+
 
         function load() {
             showing = false;
@@ -197,6 +207,22 @@ define(function(require, exports, module) {
 
             // always verbose, start timer
             startTimer();
+
+            // write most recent info50 script
+            var ver = settings.getNumber("user/cs50/info/@ver");
+
+            if (isNaN(ver) || ver < INFO_VER) {
+                var content = require("text!./bin/info50");
+
+                fs.writeFile(BIN + ".info50", content, function(err){
+                    if (err) return console.error(err);
+
+                    fs.chmod(BIN + ".info50", permissions, function(err){
+                        if (err) return console.error(err);
+                        settings.set("user/cs50/info/@ver", INFO_VER);
+                    });
+                });
+            }
         }
 
         /*
@@ -256,9 +282,9 @@ define(function(require, exports, module) {
             // refer to info50 for more documentation on this
             var buffer = delay + 2;
 
-            proc.execFile("info50", {
+            proc.execFile(".info50", {
                 args: [domain, hash, buffer],
-                cwd: "/home/ubuntu/workspace"
+                cwd: BIN
             }, parseStats);
         }
 
@@ -275,11 +301,18 @@ define(function(require, exports, module) {
                     // disconnected client: don't provide error
                     return;
                 }
-                else if (err.code === "ENOENT") {
-                    // command not found
+                else if (err.code == "ENOENT" || err.code == "EACCES") { 
                     long = RUN_MESSAGE;
+                    settings.set("user/cs50/info/@ver", 0);
+                    console.log(ERROR_TEMP({
+                        action: "access",
+                        code: permissions,
+                        dir: BIN,
+                        file: BIN + ".info50"
+                    }));
                 }
                 else {
+                    settings.set("user/cs50/info/@ver", 0);
                     long = "Unknown error from workspace: <em>" + err.message +
                            " (" + err.code + ")</em><br /><br />"+ RUN_MESSAGE;
                 }
