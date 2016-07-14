@@ -1,8 +1,7 @@
 define(function(require, exports, module) {
     main.consumes = [
         "api", "c9", "collab.workspace", "commands", "console", "Dialog",
-        "dialog.notification", "fs", "layout", "menus", "Plugin", "preferences",
-        "proc", "settings", "ui"
+        "fs", "layout", "menus", "Plugin", "preferences", "proc", "settings", "ui"
     ];
     main.provides = ["harvard.cs50.info"];
     return main;
@@ -17,7 +16,6 @@ define(function(require, exports, module) {
         var prefs = imports.preferences;
         var proc = imports.proc;
         var settings = imports.settings;
-        var showNotification = imports["dialog.notification"].show;
         var ui = imports.ui;
         var workspace = imports["collab.workspace"];
         var fs = imports.fs;
@@ -28,7 +26,6 @@ define(function(require, exports, module) {
         var INFO_VER = 1;
 
         // Templates
-        var INFO_TEMP = require("text!./templates/info.template");
         var HOST_TEMP = _.template(
             '<a href="//<%= host %>/"target="_blank" style="color:DodgerBlue"><%= protocol %>//<%= host %>/</a>'
         );
@@ -49,7 +46,6 @@ define(function(require, exports, module) {
         });
 
         // UI buttons
-        var infoBtn;
         var versionBtn;
 
         var RUN_MESSAGE = "Please reload your <tt>workspace</tt>!<br><br> \
@@ -57,9 +53,7 @@ define(function(require, exports, module) {
         var DEFAULT_REFRESH = 30;   // default refresh rate
         var delay;                  // current refresh rate
         var fetching;               // are we fetching data
-        var html = null;            // object with references to html els
         var showing;                // is the dialog showing
-        var notifying = false;      // is update50 notification showing
         var stats = null;           // last recorded stats
         var timer = null;           // javascript interval ID
         var domain = null;          // current domain
@@ -91,10 +85,6 @@ define(function(require, exports, module) {
 
             // watch for settings change and update accordingly
             settings.on("write", function() {
-                // if theme changes, update dialog background color
-                if (html !== null)
-                    setBackgroundColor(html.stats.parentElement);
-
                 // fetch new rate, stopping timer to allow restart with new val
                 var rate = settings.getNumber("user/cs50/info/@refreshRate");
 
@@ -118,14 +108,6 @@ define(function(require, exports, module) {
             // fetch setting information
             delay = settings.getNumber("user/cs50/info/@refreshRate");
 
-            // notify UI of the function to run to open the dialog
-            commands.addCommand({
-                name: "cs50infoDialog",
-                hint: "CS50 IDE Info Window",
-                group: "General",
-                exec: toggle
-            }, plugin);
-
             /* TODO: decide if wanted
             //
             commands.addCommand({
@@ -142,35 +124,6 @@ define(function(require, exports, module) {
                 group: "General",
                 exec: loadHost
             }, plugin);
-
-            // add a menu item to show the dialog
-            menus.addItemByPath("Window/~", new ui.divider(), 33, plugin);
-            menus.addItemByPath("Window/CS50 IDE Info...", new ui.item({
-                command: "cs50infoDialog"
-            }), 34, plugin);
-
-            // load CSS for button
-            imports.ui.insertCss(
-                require("text!./style.css"),
-                options.staticPrefix,
-                plugin
-            );
-
-            // create CS50 button
-            infoBtn = new ui.button({
-                command: "cs50infoDialog",
-                skin: "c9-menu-btn",
-                tooltip: "Services",
-            });
-
-            // place CS50 button
-            ui.insertByIndex(layout.findParent({
-                name: "preferences"
-            }), infoBtn, 860, plugin);
-
-            // globe
-            // TODO: change to http://glyphicons.com/, &#xe371, <span class="glyphicons glyphicons-globe-af"></span>
-            infoBtn.$ext.innerHTML = "&#127760;";
 
             // create version button
             versionBtn = new ui.button({
@@ -202,6 +155,36 @@ define(function(require, exports, module) {
                 }
             }, plugin);
 
+            // fetch data
+            updateStats();
+
+            // always verbose, start timer
+            startTimer();
+
+            // creates new divider and places it after 'About Cloud9'
+            var div = new ui.divider();
+            menus.addItemByPath("Cloud9/div", div, 100, plugin);
+
+            // creates the "phpMyAdmin" item
+            var phpMyAdmin = new ui.item({
+                id: "phpmyadmin",
+                caption: "phpMyAdmin",
+                onclick: openPHPMyAdmin
+            });
+
+            // places it in CS50 IDE tab
+            menus.addItemByPath("Cloud9/phpMyAdmin", phpMyAdmin, 101, plugin);
+
+            // creates the "Web Server" item
+            var webServer = new ui.item({
+                id: "websserver",
+                caption: "Web Server",
+                onclick: displayWebServer
+            });
+
+            // places it in CS50 IDE tab
+            menus.addItemByPath("Cloud9/Web Server", webServer, 102, plugin);
+
             // write most recent info50 script
             var ver = settings.getNumber(VERSION_PATH);
 
@@ -223,6 +206,21 @@ define(function(require, exports, module) {
                     });
                 });
             }
+        }
+
+        /*
+         * Opens the web server in a new window/tab
+         */
+        function displayWebServer() {
+            window.open(location.protocol + "//" +stats.host);
+        }
+
+        /*
+         * Opens PHP My Admin, logged in, in a new window/tab
+         */
+        function openPHPMyAdmin() {
+            var pma = stats.host + '/phpmyadmin';
+            window.open(stats.user + ":" + stats.passwd + "@" + pma);
         }
 
         /*
@@ -316,107 +314,13 @@ define(function(require, exports, module) {
                     long = "Unknown error from workspace: <em>" + err.message +
                            " (" + err.code + ")</em><br /><br />"+ RUN_MESSAGE;
                 }
-
-                // notify user to update50
-                if (notifying === false) {
-                    showNotification(
-                        '<div class="cs50-notification">' + RUN_MESSAGE + '</div>',
-                        true
-                    );
-                    notifying = true;
-                }
-
-                // update dialog with error
-                stats = {"error": long};
-                updateDialog();
-                return;
             }
-
-            notifying = false;
 
             // parse the JSON returned by info50 output
             stats = JSON.parse(stdout);
 
             // update UI
             versionBtn.setCaption(stats.version);
-            updateDialog();
-        }
-
-        /*
-         * Update the Dialog text based on latest info50
-         */
-        function updateDialog() {
-            // confirm dialog elements have been created
-            if (html === null)
-                return;
-
-            if (stats === null) {
-                // no information fetched yet
-                html.info.innerHTML = "Please wait, fetching information...";
-                html.info.style.display = "block";
-                html.stats.style.display = "none";
-            }
-            else if (stats.hasOwnProperty("error")) {
-                // error while fetching information
-                html.info.innerHTML = stats.error;
-                html.info.style.display = "block";
-                html.stats.style.display = "none";
-            }
-            else {
-
-                // TODO: just fill modal with RUN_MESSAGE rather than per field
-
-                // have stats: update table of info in dialog window
-                html.info.style.display = "none";
-                html.stats.style.display = "block";
-
-                // Add MySQL username and password field
-                if (stats.hasOwnProperty("user")) {
-                    html.user.innerHTML = stats.user;
-                }
-                else {
-                    html.user.innerHTML = RUN_MESSAGE;
-                }
-                if (stats.hasOwnProperty("passwd")) {
-                    html.passwd.innerHTML = stats.passwd;
-                }
-                else {
-                    html.passwd.innerHTML = RUN_MESSAGE;
-                }
-
-                // Template for server URL
-                html.hostname.innerHTML = HOST_TEMP({
-                    host: stats.host,
-                    protocol: location.protocol
-                });
-
-                // Template for mysql URL
-                var pma = stats.host + "/phpmyadmin";
-                html.phpmyadmin.innerHTML = SQL_TEMP({
-                    user: stats.user,
-                    password: stats.passwd,
-                    pma: pma,
-                    protocol: location.protocol
-                });
-
-                // Add workspace owner and user, if applicable
-                if(!stats.hasOwnProperty("offline")
-                    || !stats.hasOwnProperty("c9user")
-                    || !stats.hasOwnProperty("c9project")) {
-                    html.owner.innerHTML = "Please run update50!";
-                    html.name.innerHTML = "Please run update50!";
-                }
-                else if (stats.offline === "false") {
-                    html.owner.innerHTML = stats.c9user;
-                    html.name.innerHTML = stats.c9project;
-                }
-                else {
-                    html.owner.innerHTML = "not applicable for offline IDEs";
-                    html.name.innerHTML = "not applicable for offline IDEs";
-                    html.owner.style.backgroundColor = "gray";
-                    html.name.style.backgroundColor = "gray";
-                }
-            }
         }
 
         /**
@@ -435,18 +339,6 @@ define(function(require, exports, module) {
             if (!versionBtn)
                 return;
             versionBtn.show();
-        }
-
-        /*
-         * Toggle the display of the stats dialog
-         */
-        function toggle() {
-            if (showing) {
-                plugin.hide();
-            }
-            else {
-                plugin.show();
-            }
         }
 
         /*
@@ -492,71 +384,6 @@ define(function(require, exports, module) {
                 || host.endsWith(domain);
         }
 
-        /*
-         * Set the background color of the dialog based on the theme
-         */
-        function setBackgroundColor(html) {
-            var bgcolor;
-            switch (settings.get("user/general/@skin")) {
-                case "flat-light":
-                    bgcolor = "#FEFEFE";
-                    break;
-                case "flat-dark":
-                    bgcolor = "#222222";
-                    break;
-                default:
-                    bgcolor = "#DEDEDE";
-            }
-            html.style.setProperty("background-color", bgcolor);
-        }
-
-
-        /*
-         * Place initial HTML on the first drawing of the dialog
-         */
-        plugin.on("draw", function(e) {
-
-            e.html.innerHTML = INFO_TEMP;
-
-            // Prevents column wrapping in any instance
-            e.html.style.whiteSpace = "nowrap";
-
-            // Sets background on initial draw to prevent unecessary flicker
-            setBackgroundColor(e.html);
-
-            // find & connect to all of the following in the dialog's DOM
-            var els = [
-                "version", "hostname", "phpmyadmin", "info", "stats", "user",
-                "passwd", "offline", "owner", "name"
-            ];
-            html = {};
-            for (var i = 0, j = els.length; i < j; i++)
-                html[els[i]] = e.html.querySelector("#" + els[i]);
-
-            updateDialog();
-        });
-
-        /*
-         * When the dialog is shown, request latest info and display dialog
-         */
-        plugin.on("show", function () {
-            showing = true;
-
-            // make sure dialog has latest info
-            updateStats();
-
-            // keep dialog up-to-date
-            startTimer();
-        });
-
-        /*
-         * When dialog is hidden, reset state, stopping the timer if necessary
-         */
-        plugin.on("hide", function () {
-            startTimer();
-            showing = false;
-        });
-
         /***** Lifecycle *****/
 
         plugin.on("load", function() {
@@ -569,10 +396,8 @@ define(function(require, exports, module) {
             delay = 30;
             timer = null;
             showing = false;
-            infoBtn = null;
             versionBtn = null;
             fetching = false;
-            html = null;
             stats = null;
             domain = null;
         });
@@ -603,28 +428,6 @@ define(function(require, exports, module) {
              * @property showing whether info50 has run at least once
              */
             get hasLoaded(){ return (stats != null); },
-
-            _events: [
-                /**
-                 * @event show The plugin is shown
-                 */
-                "show",
-
-                /**
-                 * @event hide The plugin is hidden
-                 */
-                "hide"
-            ],
-
-            /**
-             * Show the plugin
-             */
-            show: plugin.show,
-
-            /**
-             * Hide the plugin
-             */
-            hide: plugin.hide,
 
             /**
              * Hides version number.
