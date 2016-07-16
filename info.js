@@ -212,7 +212,7 @@ define(function(require, exports, module) {
          * Opens the web server in a new window/tab
          */
         function displayWebServer() {
-            window.open(location.protocol + "//" +stats.host);
+            window.open("//" +stats.host);
         }
 
         /*
@@ -220,7 +220,7 @@ define(function(require, exports, module) {
          */
         function openPHPMyAdmin() {
             var pma = stats.host + '/phpmyadmin/';
-            window.open(stats.user + ":" + stats.passwd + "@" + pma);
+            window.open("//" + stats.user + ":" + stats.passwd + "@" + pma);
         }
 
         /*
