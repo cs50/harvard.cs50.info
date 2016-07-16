@@ -219,7 +219,7 @@ define(function(require, exports, module) {
          * Opens PHP My Admin, logged in, in a new window/tab
          */
         function openPHPMyAdmin() {
-            var pma = stats.host + '/phpmyadmin';
+            var pma = stats.host + '/phpmyadmin/';
             window.open(stats.user + ":" + stats.passwd + "@" + pma);
         }
 
