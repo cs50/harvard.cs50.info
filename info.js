@@ -155,12 +155,6 @@ define(function(require, exports, module) {
                 }
             }, plugin);
 
-            // fetch data
-            updateStats();
-
-            // always verbose, start timer
-            startTimer();
-
             // creates new divider and places it after 'About Cloud9'
             var div = new ui.divider();
             menus.addItemByPath("Cloud9/div", div, 100, plugin);
@@ -190,21 +184,29 @@ define(function(require, exports, module) {
 
             if (isNaN(ver) || ver < INFO_VER) {
                 var content = require("text!./bin/info50");
-
+                fetching = true;
                 fs.writeFile(BIN + ".info50", content, function(err){
                     if (err) return console.error(err);
 
                     fs.chmod(BIN + ".info50", permissions, function(err){
                         if (err) return console.error(err);
                         settings.set(VERSION_PATH, INFO_VER);
+                        fetching=false;
 
                         // fetch data
                         updateStats();
-            
+
                         // always verbose, start timer
                         startTimer();
                     });
                 });
+            }
+            else {
+                // fetch data
+                updateStats();
+
+                // always verbose, start timer
+                startTimer();
             }
         }
 
@@ -212,6 +214,7 @@ define(function(require, exports, module) {
          * Opens the web server in a new window/tab
          */
         function displayWebServer() {
+            if(!stats || !stats.hasOwnProperty("host")) rewrite();
             window.open("//" +stats.host);
         }
 
@@ -219,8 +222,22 @@ define(function(require, exports, module) {
          * Opens PHP My Admin, logged in, in a new window/tab
          */
         function openPHPMyAdmin() {
+            if(!stats || !stats.hasOwnProperty("host")) rewrite();
             var pma = stats.host + '/phpmyadmin/';
             window.open("//" + stats.user + ":" + stats.passwd + "@" + pma);
+        }
+
+        /*
+         * Displays error message and resets version to 0
+         */
+        function rewrite() {
+            console.log(ERROR_TEMP({
+                        action: "access",
+                        code: permissions,
+                        dir: BIN,
+                        file: BIN + ".info50"
+                    }));
+            settings.set(VERSION_PATH, 0);
         }
 
         /*
@@ -301,13 +318,7 @@ define(function(require, exports, module) {
                 }
                 else if (err.code == "ENOENT" || err.code == "EACCES") { 
                     long = RUN_MESSAGE;
-                    settings.set(VERSION_PATH, 0);
-                    console.log(ERROR_TEMP({
-                        action: "access",
-                        code: permissions,
-                        dir: BIN,
-                        file: BIN + ".info50"
-                    }));
+                    rewrite();
                 }
                 else {
                     settings.set(VERSION_PATH, 0);
