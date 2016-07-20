@@ -75,22 +75,20 @@ define(function(require, exports, module) {
             // set default values
             settings.on("read", function() {
                 settings.setDefaults("user/cs50/info", [
-                    ["refreshRate", DEFAULT_REFRESH]
+                    ["refreshRate", DEFAULT_REFRESH],
+                    ["hideVersionPres", true]
                 ]);
-
+                
                 settings.setDefaults("project/cs50/info", [
                     ["public", false]
                 ]);
             });
 
             // watch for settings change and update accordingly
-            settings.on("write", function() {
-                // fetch new rate, stopping timer to allow restart with new val
-                var rate = settings.getNumber("user/cs50/info/@refreshRate");
-
+            settings.on("user/cs50/info/@refreshRate", function(rate) {
                 if (delay !== rate) {
                     // validate new rate, overwriting bad value if necessary
-                    if (rate < 1) {
+                    if (isNaN(rate) || rate < 1) {
                         delay = DEFAULT_REFRESH;
                         settings.set("user/cs50/info/@refreshRate", delay);
                     }
@@ -103,7 +101,11 @@ define(function(require, exports, module) {
                     stopTimer();
                     startTimer();
                 }
-            });
+            }, plugin);
+
+            // toggle visibility of version Button during presentation mode
+            settings.on("user/cs50/info/@hideVersionPres", versionVisibile, plugin);
+            settings.on("user/cs50/presentation/@presenting", versionVisibile, plugin);
 
             // fetch setting information
             delay = settings.getNumber("user/cs50/info/@refreshRate");
@@ -129,7 +131,8 @@ define(function(require, exports, module) {
             versionBtn = new ui.button({
                 caption: "n/a",
                 skin: "c9-menu-btn",
-                tooltip: "Version"
+                tooltip: "Version",
+                enabled: false
             });
             versionBtn.setAttribute("class", "cs50-info-version");
 
@@ -149,6 +152,11 @@ define(function(require, exports, module) {
                             path: "user/cs50/info/@refreshRate",
                             min: 1,
                             max: 200,
+                            position: 200
+                        },
+                        "Hide version in menu bar in Presentation mode" : {
+                            type: "checkbox",
+                            path: "user/cs50/info/@hideVersionPres",
                             position: 200
                         }
                     }
@@ -310,21 +318,19 @@ define(function(require, exports, module) {
             // release lock
             fetching = false;
 
-            if (err) {
-                var long;
+            if (err !== undefined && err !== null) {
                 if (err.code === "EDISCONNECT") {
                     // disconnected client: don't provide error
                     return;
                 }
                 else if (err.code == "ENOENT" || err.code == "EACCES") { 
-                    long = RUN_MESSAGE;
                     rewrite();
                 }
                 else {
                     settings.set(VERSION_PATH, 0);
-                    long = "Unknown error from workspace: <em>" + err.message +
-                           " (" + err.code + ")</em><br /><br />"+ RUN_MESSAGE;
                 }
+                versionBtn.setCaption("n/a");
+                return;
             }
 
             // parse the JSON returned by info50 output
@@ -335,21 +341,16 @@ define(function(require, exports, module) {
         }
 
         /**
-         * Hides version number.
+         * Show or hide version number during presentation mode.
          */
-        function hideVersion() {
-            if (!versionBtn)
-                return;
-            versionBtn.hide();
-        }
-
-        /**
-         * Shows version number.
-         */
-        function showVersion() {
-            if (!versionBtn)
-                return;
-            versionBtn.show();
+        function versionVisibile() {
+            var presenting = settings.getBool("user/cs50/presentation/@presenting");
+            var hideBtn = settings.getBool("user/cs50/info/@hideVersionPres");
+            
+            if (presenting && hideBtn)
+                versionBtn.hide();
+            else
+                versionBtn.show();
         }
 
         /*
@@ -439,16 +440,6 @@ define(function(require, exports, module) {
              * @property showing whether info50 has run at least once
              */
             get hasLoaded(){ return (stats != null); },
-
-            /**
-             * Hides version number.
-             */
-            hideVersion: hideVersion,
-
-            /**
-             * Shows version number.
-             */
-            showVersion: showVersion,
         });
 
         register(null, {
