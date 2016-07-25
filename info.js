@@ -139,7 +139,7 @@ define(function(require, exports, module) {
             // place version button
             ui.insertByIndex(layout.findParent({
                 name: "preferences"
-            }), versionBtn, 860, plugin);
+            }), versionBtn, 500, plugin);
 
             // Add preference pane
             prefs.add({
