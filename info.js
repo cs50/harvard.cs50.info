@@ -1,16 +1,18 @@
 define(function(require, exports, module) {
     main.consumes = [
-        "api", "c9", "collab.workspace", "commands", "console", "Dialog",
-        "fs", "layout", "menus", "Plugin", "preferences", "proc", "settings", "ui"
+        "api", "c9", "collab.workspace", "commands", "fs", "layout", "menus",
+        "Plugin", "preferences", "proc", "settings", "ui"
     ];
     main.provides = ["harvard.cs50.info"];
     return main;
 
     function main(options, imports, register) {
+        var Plugin = imports.Plugin;
+
         var api = imports.api;
         var c9 = imports.c9;
         var commands = imports.commands;
-        var Dialog = imports.Dialog;
+        var fs = imports.fs;
         var layout = imports.layout;
         var menus = imports.menus;
         var prefs = imports.preferences;
@@ -18,38 +20,16 @@ define(function(require, exports, module) {
         var settings = imports.settings;
         var ui = imports.ui;
         var workspace = imports["collab.workspace"];
-        var fs = imports.fs;
-
-        // https://lodash.com
-        var _ = require("lodash");
 
         var INFO_VER = 1;
 
-        // Templates
-        var HOST_TEMP = _.template(
-            '<a href="//<%= host %>/"target="_blank" style="color:DodgerBlue"><%= protocol %>//<%= host %>/</a>'
-        );
-        var SQL_TEMP = _.template(
-            '<a href="//<%= user %>:<%= password %>@<%= pma %>/" target="_blank" style="color:DodgerBlue"><%= protocol %>//<%= pma %>/</a>'
-        );
-        var ERROR_TEMP = _.template(
-            'Could not <%= action %> <%= file %>. Try chmod <%= code %> <%= dir %>, chmod <%= code %> <%= file %>, then reload the page!'
-        );
-
         /***** Initialization *****/
 
-        var plugin = new Dialog("CS50", main.consumes, {
-            allowClose: true,
-            modal: true,
-            textselect: true,
-            title: "Services"
-        });
+        var plugin = new Plugin("CS50", main.consumes);
 
         // UI buttons
         var versionBtn;
 
-        var RUN_MESSAGE = "Please reload your <tt>workspace</tt>!<br><br> \
-            <i>For more information, check for errors in your browser's javascript console</i>";
         var DEFAULT_REFRESH = 30;   // default refresh rate
         var delay;                  // current refresh rate
         var fetching;               // are we fetching data
@@ -59,6 +39,7 @@ define(function(require, exports, module) {
         var domain = null;          // current domain
         var BIN = "~/bin/";         // location of .info50 script
         var permissions = "755";    // permissions given to .info50 script
+        var presenting = false;
         var VERSION_PATH = "project/cs50/info/@ver";
 
         function load() {
@@ -76,9 +57,8 @@ define(function(require, exports, module) {
             settings.on("read", function() {
                 settings.setDefaults("user/cs50/info", [
                     ["refreshRate", DEFAULT_REFRESH],
-                    ["hideVersionPres", true]
                 ]);
-                
+
                 settings.setDefaults("project/cs50/info", [
                     ["public", false]
                 ]);
@@ -103,21 +83,8 @@ define(function(require, exports, module) {
                 }
             }, plugin);
 
-            // toggle visibility of version Button during presentation mode
-            settings.on("user/cs50/info/@hideVersionPres", versionVisibile, plugin);
-            settings.on("user/cs50/presentation/@presenting", versionVisibile, plugin);
-
             // fetch setting information
             delay = settings.getNumber("user/cs50/info/@refreshRate");
-
-            /* TODO: decide if wanted
-            //
-            commands.addCommand({
-                name: "update50",
-                group: "General",
-                exec: update50
-            }, plugin);
-            */
 
             // notify UI of the function to open the host in a new tab
             commands.addCommand({
@@ -134,12 +101,26 @@ define(function(require, exports, module) {
                 tooltip: "Version",
                 enabled: false
             });
-            versionBtn.setAttribute("class", "cs50-info-version");
 
             // place version button
             ui.insertByIndex(layout.findParent({
                 name: "preferences"
             }), versionBtn, 500, plugin);
+
+            // cache whether presentation is on initially
+            presenting = settings.getBool("user/cs50/presentation/@presenting");
+
+            // set visibility of version number initially
+            toggleVersion(!presenting);
+
+            // handle toggling presentation
+            settings.on("user/cs50/presentation/@presenting", function(newVal) {
+                 // cache setting
+                presenting = newVal;
+
+                // toggle visibility of version number
+                toggleVersion(!presenting);
+            }, plugin);
 
             // Add preference pane
             prefs.add({
@@ -152,11 +133,6 @@ define(function(require, exports, module) {
                             path: "user/cs50/info/@refreshRate",
                             min: 1,
                             max: 200,
-                            position: 200
-                        },
-                        "Hide version in menu bar in Presentation mode" : {
-                            type: "checkbox",
-                            path: "user/cs50/info/@hideVersionPres",
                             position: 200
                         }
                     }
@@ -323,7 +299,7 @@ define(function(require, exports, module) {
                     // disconnected client: don't provide error
                     return;
                 }
-                else if (err.code == "ENOENT" || err.code == "EACCES") { 
+                else if (err.code == "ENOENT" || err.code == "EACCES") {
                     rewrite();
                 }
                 else {
@@ -341,32 +317,22 @@ define(function(require, exports, module) {
         }
 
         /**
-         * Show or hide version number during presentation mode.
+         * Toggles visiblity of version number. Forcibly hides version number if
+         * presentation is on.
+         *
+         * @param {boolean} show whether to show or hide version number (has no
+         * effect if true and presentation is on)
          */
-        function versionVisibile() {
-            var presenting = settings.getBool("user/cs50/presentation/@presenting");
-            var hideBtn = settings.getBool("user/cs50/info/@hideVersionPres");
-            
-            if (presenting && hideBtn)
-                versionBtn.hide();
-            else
-                versionBtn.show();
+        function toggleVersion(show) {
+            // ensure button was initialized
+            if (versionBtn) {
+                // forcibly hide while presentation is on or set to hide only
+                if (presenting || !show)
+                    versionBtn.hide();
+                else if (show)
+                    versionBtn.show();
+            }
         }
-
-        /*
-         * Opens terminal within console and runs update50 therein.
-         */
-        /* TODO: decide if wanted
-        function update50() {
-            imports.console.openEditor("terminal", true, function(err, tab) {
-                if (!err) {
-                    tab.editor.on("draw", function(e) {
-                        tab.editor.write("update50\n");
-                    });
-                }
-            });
-        }
-        */
 
         /*
          * Open domain page in new tab
@@ -412,6 +378,7 @@ define(function(require, exports, module) {
             fetching = false;
             stats = null;
             domain = null;
+            presenting = false;
         });
 
         /***** Register and define API *****/
