@@ -33,7 +33,6 @@ define(function(require, exports, module) {
         var DEFAULT_REFRESH = 30;   // default refresh rate
         var delay;                  // current refresh rate
         var fetching;               // are we fetching data
-        var showing;                // is the dialog showing
         var stats = null;           // last recorded stats
         var timer = null;           // javascript interval ID
         var domain = null;          // current domain
@@ -43,7 +42,6 @@ define(function(require, exports, module) {
         var VERSION_PATH = "project/cs50/info/@ver";
 
         function load() {
-            showing = false;
             fetching = false;
 
             // notify the instance of the domain the IDE is loaded on
@@ -85,14 +83,6 @@ define(function(require, exports, module) {
 
             // fetch setting information
             delay = settings.getNumber("user/cs50/info/@refreshRate");
-
-            // notify UI of the function to open the host in a new tab
-            commands.addCommand({
-                name: "openDomain",
-                hint: "CS50 IDE Host",
-                group: "General",
-                exec: loadHost
-            }, plugin);
 
             // create version button
             versionBtn = new ui.button({
@@ -207,7 +197,7 @@ define(function(require, exports, module) {
          */
         function openPHPMyAdmin() {
             if(!stats || !stats.hasOwnProperty("host")) rewrite();
-            var pma = stats.host + '/phpmyadmin/';
+            var pma = stats.host + '/phpmyadmin';
             window.open("//" + stats.user + ":" + stats.passwd + "@" + pma);
         }
 
@@ -335,13 +325,6 @@ define(function(require, exports, module) {
         }
 
         /*
-         * Open domain page in new tab
-         */
-        function loadHost() {
-            window.open("//" + stats.host);
-        }
-
-        /*
          * Checks if user can preview local server
          */
         function canPreview() {
@@ -373,7 +356,6 @@ define(function(require, exports, module) {
 
             delay = 30;
             timer = null;
-            showing = false;
             versionBtn = null;
             fetching = false;
             stats = null;
@@ -389,22 +371,17 @@ define(function(require, exports, module) {
          */
         plugin.freezePublicAPI({
             /**
-             * @property showing whether this plugin is being shown
-             */
-            get showing(){ return showing; },
-
-            /**
-             * @property showing whether this client can preview
+             * @property canPreview whether this client can preview
              */
             get canPreview(){ return canPreview(); },
 
             /**
-             * @property showing hostname50
+             * @property host hostname50
              */
             get host() { return (stats && stats.hasOwnProperty("host")) ? stats.host : null; },
 
             /**
-             * @property showing whether info50 has run at least once
+             * @property hasLoaded whether info50 has run at least once
              */
             get hasLoaded(){ return (stats != null); },
         });
