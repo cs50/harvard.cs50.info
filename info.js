@@ -373,17 +373,17 @@ define(function(require, exports, module) {
             /**
              * @property canPreview whether this client can preview
              */
-            get canPreview(){ return canPreview(); },
+            get canPreview() { return canPreview(); },
 
             /**
-             * @property host hostname50
+             * @property host
              */
             get host() { return (stats && stats.hasOwnProperty("host")) ? stats.host : null; },
 
             /**
              * @property hasLoaded whether info50 has run at least once
              */
-            get hasLoaded(){ return (stats != null); },
+            get hasLoaded() { return (stats != null); },
         });
 
         register(null, {
