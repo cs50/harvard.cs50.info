@@ -188,7 +188,7 @@ define(function(require, exports, module) {
             }
 
             // simplify previewer
-            // TODO determine if possible to do for "c9 exec visit" command only
+            // TODO determine if possible to do for "c9 exec browser" command only
             editors.on("create", function(e) {
                 // ensure editor type is "preview"
                 var editor = e.editor;
@@ -217,11 +217,11 @@ define(function(require, exports, module) {
 
             // add command to open URL
             commands.addCommand({
-                name: "visit",
+                name: "browser",
                 exec: function(args) {
                     // ensure URL is given
                     if (!_.isArray(args) || args.length !== 2 || !_.isString(args[1]))
-                        return console.log("Usage: c9 exec visit URL");
+                        return console.log("Usage: c9 exec browser URL");
 
                     // open URL in built-in browser tab
                     preview.openPreview(args[1], null, true);
