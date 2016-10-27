@@ -1,7 +1,7 @@
 define(function(require, exports, module) {
     main.consumes = [
-        "api", "c9", "collab.workspace", "commands", "fs", "layout", "menus",
-        "Plugin", "preferences", "proc", "settings", "ui"
+        "api", "c9", "collab.workspace", "commands", "editors", "fs", "layout",
+        "menus", "Plugin", "preferences", "preview", "proc", "settings", "ui"
     ];
     main.provides = ["harvard.cs50.info"];
     return main;
@@ -12,14 +12,18 @@ define(function(require, exports, module) {
         var api = imports.api;
         var c9 = imports.c9;
         var commands = imports.commands;
+        var editors = imports.editors;
         var fs = imports.fs;
         var layout = imports.layout;
         var menus = imports.menus;
         var prefs = imports.preferences;
+        var preview = imports.preview;
         var proc = imports.proc;
         var settings = imports.settings;
         var ui = imports.ui;
         var workspace = imports["collab.workspace"];
+
+        var _ = require("lodash");
 
         var INFO_VER = 1;
 
@@ -182,6 +186,60 @@ define(function(require, exports, module) {
                 // always verbose, start timer
                 startTimer();
             }
+
+            // simplify previewer
+            // TODO determine if possible to do for webserver command only
+            editors.on("create", function(e) {
+                // ensure editor type is "preview"
+                var editor = e.editor;
+                if (editor.type === "preview") {
+                    // hide location bar
+                    editor.getElement("locationbar", function(e) {
+                        e.setAttribute("visible", false);
+                    });
+
+                    // forcibly-hide "Settings" menu as shows back automatically
+                    editor.getElement("btnSettings", function(e) {
+                        e.$ext.style.display = "none";
+                    });
+
+                    editor.getElement("btnPopOut", function(e) {
+                        // hide "Reload" button
+                        if (e.parentNode && e.parentNode.previousSibling)
+                            e.parentNode.previousSibling.setAttribute("visible", false);
+
+                        // shift "Pop Out" button to the right
+                        var style = e.getAttribute("style") || "";
+                        e.setAttribute("style", "position:absolute;right:0;" + style);
+                    });
+                }
+            });
+
+            // add command to open workspace domain on allowed port
+            // TODO need/possible to add as CLI command (c9 webserver ...)?
+            commands.addCommand({
+                name: "webserver",
+                exec: function(args) {
+                    // ensure port number is valid
+                    // TODO need/possible to return error code?
+                    if (!_.isArray(args) || args.length > 2
+                        || (args.length === 2 && (!_.isNumber(args[1])
+                        || !/^808(0|1|2)$/.test(args[1]))))
+                        return console.log("Usage: c9 exec webserver [8080|8081|8082]");
+
+                    // build URL
+                    // TODO determine if better to use c9.hostname generally
+                    var url = c9.hostname
+                        ? "https://" + c9.hostname
+                        : "http://localhost";
+
+                    // append port (default to 8080)
+                    url += (":" + (args[1] || "8080"));
+
+                    // open URL in built-in browser tab
+                    preview.openPreview(url, null, true);
+                }
+            }, plugin);
         }
 
         /*
