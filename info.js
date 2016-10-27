@@ -188,7 +188,7 @@ define(function(require, exports, module) {
             }
 
             // simplify previewer
-            // TODO determine if possible to do for webserver command only
+            // TODO determine if possible to do for "c9 exec visit" command only
             editors.on("create", function(e) {
                 // ensure editor type is "preview"
                 var editor = e.editor;
@@ -215,29 +215,16 @@ define(function(require, exports, module) {
                 }
             });
 
-            // add command to open workspace domain on allowed port
-            // TODO need/possible to add as CLI command (c9 webserver ...)?
+            // add command to open URL
             commands.addCommand({
-                name: "webserver",
+                name: "visit",
                 exec: function(args) {
-                    // ensure port number is valid
-                    // TODO need/possible to return error code?
-                    if (!_.isArray(args) || args.length > 2
-                        || (args.length === 2 && (!_.isNumber(args[1])
-                        || !/^808(0|1|2)$/.test(args[1]))))
-                        return console.log("Usage: c9 exec webserver [8080|8081|8082]");
-
-                    // build URL
-                    // TODO determine if better to use c9.hostname generally
-                    var url = c9.hostname
-                        ? "https://" + c9.hostname
-                        : "http://localhost";
-
-                    // append port (default to 8080)
-                    url += (":" + (args[1] || "8080"));
+                    // ensure URL is given
+                    if (!_.isArray(args) || args.length !== 2 || !_.isString(args[1]))
+                        return console.log("Usage: c9 exec visit URL");
 
                     // open URL in built-in browser tab
-                    preview.openPreview(url, null, true);
+                    preview.openPreview(args[1], null, true);
                 }
             }, plugin);
         }
