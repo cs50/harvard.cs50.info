@@ -186,47 +186,6 @@ define(function(require, exports, module) {
                 // always verbose, start timer
                 startTimer();
             }
-
-            // simplify previewer
-            // TODO determine if possible to do for "c9 exec browser" command only
-            editors.on("create", function(e) {
-                // ensure editor type is "preview"
-                var editor = e.editor;
-                if (editor.type === "preview") {
-                    // hide location bar
-                    editor.getElement("locationbar", function(e) {
-                        e.setAttribute("visible", false);
-                    });
-
-                    // forcibly-hide "Settings" menu as shows back automatically
-                    editor.getElement("btnSettings", function(e) {
-                        e.$ext.style.display = "none";
-                    });
-
-                    editor.getElement("btnPopOut", function(e) {
-                        // hide "Reload" button
-                        if (e.parentNode && e.parentNode.previousSibling)
-                            e.parentNode.previousSibling.setAttribute("visible", false);
-
-                        // shift "Pop Out" button to the right
-                        var style = e.getAttribute("style") || "";
-                        e.setAttribute("style", "position:absolute;right:0;" + style);
-                    });
-                }
-            });
-
-            // add command to open URL
-            commands.addCommand({
-                name: "browser",
-                exec: function(args) {
-                    // ensure URL is given
-                    if (!_.isArray(args) || args.length !== 2 || !_.isString(args[1]))
-                        return console.log("Usage: c9 exec browser URL");
-
-                    // open URL in built-in browser tab
-                    preview.openPreview(args[1], null, true);
-                }
-            }, plugin);
         }
 
         /*
