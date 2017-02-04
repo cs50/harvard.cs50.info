@@ -1,7 +1,7 @@
 define(function(require, exports, module) {
     main.consumes = [
-        "api", "c9", "collab.workspace", "commands", "editors", "fs", "layout",
-        "menus", "Plugin", "preferences", "preview", "proc", "settings", "ui"
+        "api", "c9", "collab.workspace", "commands", "fs", "layout", "menus",
+        "Plugin", "preferences", "proc", "settings", "ui"
     ];
     main.provides = ["harvard.cs50.info"];
     return main;
@@ -12,18 +12,14 @@ define(function(require, exports, module) {
         var api = imports.api;
         var c9 = imports.c9;
         var commands = imports.commands;
-        var editors = imports.editors;
         var fs = imports.fs;
         var layout = imports.layout;
         var menus = imports.menus;
         var prefs = imports.preferences;
-        var preview = imports.preview;
         var proc = imports.proc;
         var settings = imports.settings;
         var ui = imports.ui;
         var workspace = imports["collab.workspace"];
-
-        var _ = require("lodash");
 
         var INFO_VER = 1;
 
@@ -328,27 +324,6 @@ define(function(require, exports, module) {
             }
         }
 
-        /*
-         * Checks if user can preview local server
-         */
-        function canPreview() {
-            if (!c9.hosted)
-                return true;
-
-            if (settings.getBool("project/cs50/info/@public"))
-                return true;
-
-            // remove port from domain if present
-            if (!stats || typeof stats.host !== "string")
-                return false;
-
-            var host = stats.host.split(":", 1)[0];
-
-            // host must match, except c9 IDEs must be on c9users domain
-            return (domain === "c9.io" && host.endsWith("c9users.io"))
-                || host.endsWith(domain);
-        }
-
         /***** Lifecycle *****/
 
         plugin.on("load", function() {
@@ -374,11 +349,6 @@ define(function(require, exports, module) {
          * @singleton
          */
         plugin.freezePublicAPI({
-            /**
-             * @property canPreview whether this client can preview
-             */
-            get canPreview() { return canPreview(); },
-
             /**
              * @property host
              */
