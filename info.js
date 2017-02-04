@@ -1,7 +1,7 @@
 define(function(require, exports, module) {
     main.consumes = [
-        "api", "c9", "collab.workspace", "commands", "editors", "fs", "layout",
-        "menus", "Plugin", "preferences", "preview", "proc", "settings", "ui"
+        "api", "c9", "collab.workspace", "commands", "fs", "layout", "menus",
+        "Plugin", "preferences", "proc", "settings", "ui"
     ];
     main.provides = ["harvard.cs50.info"];
     return main;
@@ -12,18 +12,14 @@ define(function(require, exports, module) {
         var api = imports.api;
         var c9 = imports.c9;
         var commands = imports.commands;
-        var editors = imports.editors;
         var fs = imports.fs;
         var layout = imports.layout;
         var menus = imports.menus;
         var prefs = imports.preferences;
-        var preview = imports.preview;
         var proc = imports.proc;
         var settings = imports.settings;
         var ui = imports.ui;
         var workspace = imports["collab.workspace"];
-
-        var _ = require("lodash");
 
         var INFO_VER = 1;
 
