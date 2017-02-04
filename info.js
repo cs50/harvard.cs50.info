@@ -324,27 +324,6 @@ define(function(require, exports, module) {
             }
         }
 
-        /*
-         * Checks if user can preview local server
-         */
-        function canPreview() {
-            if (!c9.hosted)
-                return true;
-
-            if (settings.getBool("project/cs50/info/@public"))
-                return true;
-
-            // remove port from domain if present
-            if (!stats || typeof stats.host !== "string")
-                return false;
-
-            var host = stats.host.split(":", 1)[0];
-
-            // host must match, except c9 IDEs must be on c9users domain
-            return (domain === "c9.io" && host.endsWith("c9users.io"))
-                || host.endsWith(domain);
-        }
-
         /***** Lifecycle *****/
 
         plugin.on("load", function() {
@@ -370,11 +349,6 @@ define(function(require, exports, module) {
          * @singleton
          */
         plugin.freezePublicAPI({
-            /**
-             * @property canPreview whether this client can preview
-             */
-            get canPreview() { return canPreview(); },
-
             /**
              * @property host
              */
