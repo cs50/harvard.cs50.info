@@ -1,7 +1,8 @@
 define(function(require, exports, module) {
     main.consumes = [
-        "api", "c9", "collab.workspace", "commands", "fs", "http", "layout",
-        "menus", "Plugin", "preferences", "proc", "settings", "ui"
+        "api", "c9", "collab.workspace", "commands", "dialog.error", "fs",
+        "http", "layout", "menus", "Plugin", "preferences", "proc", "settings",
+        "ui"
     ];
     main.provides = ["harvard.cs50.info"];
     return main;
@@ -19,6 +20,7 @@ define(function(require, exports, module) {
         var prefs = imports.preferences;
         var proc = imports.proc;
         var settings = imports.settings;
+        var showError = imports["dialog.error"].show;
         var ui = imports.ui;
         var workspace = imports["collab.workspace"];
 
@@ -38,7 +40,6 @@ define(function(require, exports, module) {
         var timer = null;           // javascript interval ID
         var domain = null;          // current domain
         var BIN = "~/bin/";         // location of .info50 script
-        var permissions = "755";    // permissions given to .info50 script
         var presenting = false;
         var version = {};
         var VERSION_PATH = "project/cs50/info/@ver";
@@ -162,43 +163,66 @@ define(function(require, exports, module) {
             // places it in CS50 IDE tab
             menus.addItemByPath("Cloud9/Web Server", webServer, 102, plugin);
 
-            // write most recent info50 script
-            var ver = settings.getNumber(VERSION_PATH);
+            // .info50's path
+            var path = BIN + ".info50";
 
-            if (isNaN(ver) || ver < INFO_VER) {
-                var content = require("text!./bin/info50");
-                fetching = true;
-                fs.writeFile(BIN + ".info50", content, function(err){
-                    if (err) return console.error(err);
+            // ensure .info50 exists
+            fs.exists(path, function(exists) {
+                // fetch version of current .info50 script
+                var ver = settings.getNumber(VERSION_PATH);
 
-                    fs.chmod(BIN + ".info50", permissions, function(err){
-                        if (err) return console.error(err);
-                        settings.set(VERSION_PATH, INFO_VER);
-                        fetching=false;
+                // write .info50 when should
+                if (!exists || isNaN(ver) || ver < INFO_VER) {
+                    // fetch contents
+                    var content = require("text!./bin/info50");
 
-                        // fetch data
-                        updateStats();
+                    // hold fetching stats
+                    fetching = true;
 
-                        // always verbose, start timer
-                        startTimer();
+                    // write .info50
+                    fs.writeFile(path, content, function(err){
+                        if (err)
+                            return console.error(err);
+
+                        // make .info50 world-executable
+                        fs.chmod(path, 755, function(err){
+                            if (err)
+                                return console.error(err);
+
+                            // update cached version of info50 script
+                            settings.set(VERSION_PATH, INFO_VER);
+                            fetching=false;
+
+                            // fetch data
+                            updateStats();
+
+                            // always verbose, start timer
+                            startTimer();
+                        });
                     });
-                });
-            }
-            else {
-                // fetch data
-                updateStats();
+                }
+                else {
+                    // fetch stats
+                    updateStats();
 
-                // always verbose, start timer
-                startTimer();
-            }
+                    // always verbose, start timer
+                    startTimer();
+                }
+            });
+
         }
 
-        /*
+        /**
          * Opens the web server in a new window/tab
          */
         function displayWebServer() {
-            if(!stats || !stats.hasOwnProperty("host")) rewrite();
-            window.open("//" +stats.host);
+            if(!stats || !stats.hasOwnProperty("host")) {
+                // rewrite .info50 on reload
+                settings.set(VERSION_PATH, 0);
+                return showError("Error opening workspace domain. Try reloading the IDE!");
+            }
+
+            window.open("//" + stats.host);
         }
 
         /**
@@ -314,29 +338,21 @@ define(function(require, exports, module) {
             version.button.setCaption("v" + version.current);
         }
 
-        /*
+        /**
          * Opens PHP My Admin, logged in, in a new window/tab
          */
         function openPHPMyAdmin() {
-            if(!stats || !stats.hasOwnProperty("host")) rewrite();
+            if(!stats || !stats.hasOwnProperty("host")) {
+                // rewrite .info50 on reload
+                settings.set(VERSION_PATH, 0);
+                return showError("Error opening phpMyAdmin. Try reloading the IDE!");
+            }
+
             var pma = stats.host + '/phpmyadmin';
             window.open("//" + stats.user + ":" + stats.passwd + "@" + pma);
         }
 
-        /*
-         * Displays error message and resets version to 0
-         */
-        function rewrite() {
-            console.log(ERROR_TEMP({
-                        action: "access",
-                        code: permissions,
-                        dir: BIN,
-                        file: BIN + ".info50"
-                    }));
-            settings.set(VERSION_PATH, 0);
-        }
-
-        /*
+        /**
          * Stop automatic refresh of information by disabling JS timer
          */
         function stopTimer() {
@@ -346,7 +362,7 @@ define(function(require, exports, module) {
             timer = null;
         }
 
-        /*
+        /**
          * If not already started, begin a timer to automatically refresh data
          */
         function startTimer() {
@@ -355,7 +371,7 @@ define(function(require, exports, module) {
             timer = window.setInterval(updateStats, delay * 1000);
         }
 
-        /*
+        /**
          * Updates the shared status (public or private).
          */
         function fetchSharedStatus() {
@@ -370,7 +386,7 @@ define(function(require, exports, module) {
             });
         }
 
-        /*
+        /**
          * Initiate an info refresh by calling `info50`
          */
         function updateStats(callback) {
@@ -399,28 +415,21 @@ define(function(require, exports, module) {
             }, parseStats);
         }
 
-        /*
+        /**
          * Process output from info50 and update UI with new info
          */
         function parseStats(err, stdout, stderr) {
             // release lock
             fetching = false;
 
-            if (err !== undefined && err !== null) {
-                if (err.code === "EDISCONNECT") {
-                    // disconnected client: don't provide error
+            if (err) {
+                // disconnected client; don't provide error
+                if (err.code === "EDISCONNECT")
                     return;
-                }
-                else if (err.code == "ENOENT" || err.code == "EACCES") {
-                    rewrite();
-                }
-                else {
-                    settings.set(VERSION_PATH, 0);
-                }
 
                 version.current = null;
                 updateVersionButton();
-                return;
+                return console.log(err);;
             }
 
             // parse the JSON returned by info50 output
