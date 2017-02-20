@@ -1,7 +1,8 @@
 define(function(require, exports, module) {
     main.consumes = [
-        "api", "c9", "collab.workspace", "commands", "fs", "layout", "menus",
-        "Plugin", "preferences", "proc", "settings", "ui"
+        "api", "c9", "collab.workspace", "commands", "dialog.error",
+        "dialog.notification", "fs", "http", "layout", "menus", "Plugin",
+        "preferences", "proc", "settings", "ui"
     ];
     main.provides = ["harvard.cs50.info"];
     return main;
@@ -13,22 +14,25 @@ define(function(require, exports, module) {
         var c9 = imports.c9;
         var commands = imports.commands;
         var fs = imports.fs;
+        var http = imports.http;
         var layout = imports.layout;
         var menus = imports.menus;
+        var notify = imports["dialog.notification"].show;
         var prefs = imports.preferences;
         var proc = imports.proc;
         var settings = imports.settings;
+        var showError = imports["dialog.error"].show;
         var ui = imports.ui;
         var workspace = imports["collab.workspace"];
+
+        var _ = require("lodash");
 
         var INFO_VER = 1;
 
         /***** Initialization *****/
 
         var plugin = new Plugin("CS50", main.consumes);
-
-        // UI buttons
-        var versionBtn;
+        var emit = plugin.getEmitter();
 
         var DEFAULT_REFRESH = 30;   // default refresh rate
         var delay;                  // current refresh rate
@@ -37,11 +41,14 @@ define(function(require, exports, module) {
         var timer = null;           // javascript interval ID
         var domain = null;          // current domain
         var BIN = "~/bin/";         // location of .info50 script
-        var permissions = "755";    // permissions given to .info50 script
         var presenting = false;
+        var version = {};
         var VERSION_PATH = "project/cs50/info/@ver";
 
         function load() {
+            // load plugins CSS
+            ui.insertCss(require("text!./style.css"), options.staticPrefix, plugin);
+
             fetching = false;
 
             // notify the instance of the domain the IDE is loaded on
@@ -85,17 +92,21 @@ define(function(require, exports, module) {
             delay = settings.getNumber("user/cs50/info/@refreshRate");
 
             // create version button
-            versionBtn = new ui.button({
+            version.button = new ui.button({
                 caption: "n/a",
+                class: "cs50-version-btn",
+                enabled: false,
                 skin: "c9-menu-btn",
-                tooltip: "Version",
-                enabled: false
+                width: 50
             });
+
+            // fetch latest ide50.deb version
+            fetchLatestVersion();
 
             // place version button
             ui.insertByIndex(layout.findParent({
                 name: "preferences"
-            }), versionBtn, 500, plugin);
+            }), version.button, 500, plugin);
 
             // cache whether presentation is on initially
             presenting = settings.getBool("user/cs50/presentation/@presenting");
@@ -153,68 +164,187 @@ define(function(require, exports, module) {
             // places it in CS50 IDE tab
             menus.addItemByPath("Cloud9/Web Server", webServer, 102, plugin);
 
-            // write most recent info50 script
-            var ver = settings.getNumber(VERSION_PATH);
+            // .info50's path
+            var path = BIN + ".info50";
 
-            if (isNaN(ver) || ver < INFO_VER) {
-                var content = require("text!./bin/info50");
-                fetching = true;
-                fs.writeFile(BIN + ".info50", content, function(err){
-                    if (err) return console.error(err);
+            // ensure .info50 exists
+            fs.exists(path, function(exists) {
+                // fetch version of current .info50 script
+                var ver = settings.getNumber(VERSION_PATH);
 
-                    fs.chmod(BIN + ".info50", permissions, function(err){
-                        if (err) return console.error(err);
-                        settings.set(VERSION_PATH, INFO_VER);
-                        fetching=false;
+                // write .info50 when should
+                if (!exists || isNaN(ver) || ver < INFO_VER) {
+                    // fetch contents
+                    var content = require("text!./bin/info50");
 
-                        // fetch data
-                        updateStats();
+                    // hold fetching stats
+                    fetching = true;
 
-                        // always verbose, start timer
-                        startTimer();
+                    // write .info50
+                    fs.writeFile(path, content, function(err){
+                        if (err)
+                            return console.error(err);
+
+                        // make .info50 world-executable
+                        fs.chmod(path, 755, function(err){
+                            if (err)
+                                return console.error(err);
+
+                            // update cached version of info50 script
+                            settings.set(VERSION_PATH, INFO_VER);
+                            fetching=false;
+
+                            // fetch data
+                            updateStats();
+
+                            // always verbose, start timer
+                            startTimer();
+                        });
                     });
-                });
-            }
-            else {
-                // fetch data
-                updateStats();
+                }
+                else {
+                    // fetch stats
+                    updateStats();
 
-                // always verbose, start timer
-                startTimer();
-            }
+                    // always verbose, start timer
+                    startTimer();
+                }
+            });
+
         }
 
-        /*
+        /**
          * Opens the web server in a new window/tab
          */
         function displayWebServer() {
-            if(!stats || !stats.hasOwnProperty("host")) rewrite();
-            window.open("//" +stats.host);
+            if(!stats || !stats.hasOwnProperty("host")) {
+                // rewrite .info50 on reload
+                settings.set(VERSION_PATH, 0);
+                return showError("Error opening workspace domain. Try reloading the IDE!");
+            }
+
+            window.open("//" + stats.host);
         }
 
-        /*
+        /**
+         * Fetches latest version number of ide50.deb daily
+         */
+        function fetchLatestVersion() {
+            if (!version.button) {
+                return;
+            }
+
+            // delay until current version is fetched
+            else if (!_.isNumber(version.current)) {
+                // avoid registering more than once
+                plugin.off("statsUpdate", fetchLatestVersion);
+                plugin.once("statsUpdate", fetchLatestVersion);
+                return;
+            }
+
+            // fetch daily
+            if (version.interval)
+                clearInterval(version.interval);
+
+            version.interval = setInterval(fetchLatestVersion, 86400000);
+
+            // use the cahce if possible
+            version.latest = settings.getNumber("project/cs50/info/@latestVersion") || 0;
+            if (version.latest > version.current)
+                return showUpdate();
+
+            // query the mirror
+            http.request(
+                "http://mirror.cs50.net/ide50/2015/dists/trusty/main/binary-amd64/Packages",
+                { contentType: "text/plain" },
+                function(err, data) {
+                    if (err)
+                        return console.log(err);
+
+                    // find latest version
+                    var matches = /Package:\s*ide50\s*\nVersion:\s*(\d+)/m.exec(data);
+                    if (!matches)
+                        return;
+
+                    // parse fetched version
+                    var fetchedVersion = _.parseInt(matches[1]);
+
+                    // update latest version and cache when should
+                    if (fetchedVersion > version.latest) {
+                        // update latest version
+                        version.latest = fetchedVersion;
+
+                        // cache latest version
+                        settings.set("project/cs50/info/@latestVersion", version.latest);
+                    }
+
+                    // show update notification if should
+                    showUpdate(version.latest > version.current);
+                }
+            );
+        }
+
+        /**
+         * Shows or hides update notification
+         *
+         * @param [boolean] show whether to show or hide update notification
+         */
+        function showUpdate(show) {
+            if (show === false && _.isFunction(notify.hide)) {
+                notify.hide();
+                notify.hide = null;
+                return;
+            }
+            else if (show !== false && !notify.hide) {
+                notify.hide = notify(
+                    '<div class="cs50-notification">An update is available for CS50 IDE. Run <pre>update50</pre> in a terminal window.</div>',
+                    true
+                );
+            }
+        }
+
+        /**
+         * Updates caption of version button and shows or hides update
+         * notification when should
+         */
+        function updateVersionButton() {
+            if (!version.button)
+                return;
+
+            // handle when current version isn't available
+            if (!_.isNumber(version.current)) {
+                version.button.setCaption("n/a");
+                showUpdate(false);
+                return;
+            }
+
+            // show or hide update notification when should
+            else if (_.isNumber(version.latest)) {
+                if (version.latest > version.current)
+                    showUpdate();
+                else
+                    showUpdate(false);
+            }
+
+            // update caption
+            version.button.setCaption("v" + version.current);
+        }
+
+        /**
          * Opens PHP My Admin, logged in, in a new window/tab
          */
         function openPHPMyAdmin() {
-            if(!stats || !stats.hasOwnProperty("host")) rewrite();
+            if(!stats || !stats.hasOwnProperty("host")) {
+                // rewrite .info50 on reload
+                settings.set(VERSION_PATH, 0);
+                return showError("Error opening phpMyAdmin. Try reloading the IDE!");
+            }
+
             var pma = stats.host + '/phpmyadmin';
             window.open("//" + stats.user + ":" + stats.passwd + "@" + pma);
         }
 
-        /*
-         * Displays error message and resets version to 0
-         */
-        function rewrite() {
-            console.log(ERROR_TEMP({
-                        action: "access",
-                        code: permissions,
-                        dir: BIN,
-                        file: BIN + ".info50"
-                    }));
-            settings.set(VERSION_PATH, 0);
-        }
-
-        /*
+        /**
          * Stop automatic refresh of information by disabling JS timer
          */
         function stopTimer() {
@@ -224,7 +354,7 @@ define(function(require, exports, module) {
             timer = null;
         }
 
-        /*
+        /**
          * If not already started, begin a timer to automatically refresh data
          */
         function startTimer() {
@@ -233,7 +363,7 @@ define(function(require, exports, module) {
             timer = window.setInterval(updateStats, delay * 1000);
         }
 
-        /*
+        /**
          * Updates the shared status (public or private).
          */
         function fetchSharedStatus() {
@@ -248,7 +378,7 @@ define(function(require, exports, module) {
             });
         }
 
-        /*
+        /**
          * Initiate an info refresh by calling `info50`
          */
         function updateStats(callback) {
@@ -277,33 +407,35 @@ define(function(require, exports, module) {
             }, parseStats);
         }
 
-        /*
+        /**
          * Process output from info50 and update UI with new info
          */
         function parseStats(err, stdout, stderr) {
             // release lock
             fetching = false;
 
-            if (err !== undefined && err !== null) {
-                if (err.code === "EDISCONNECT") {
-                    // disconnected client: don't provide error
+            if (err) {
+                // disconnected client; don't provide error
+                if (err.code === "EDISCONNECT")
                     return;
-                }
-                else if (err.code == "ENOENT" || err.code == "EACCES") {
-                    rewrite();
-                }
-                else {
-                    settings.set(VERSION_PATH, 0);
-                }
-                versionBtn.setCaption("n/a");
-                return;
+
+                version.current = null;
+                updateVersionButton();
+                return console.log(err);;
             }
 
             // parse the JSON returned by info50 output
             stats = JSON.parse(stdout);
 
-            // update UI
-            versionBtn.setCaption(stats.version);
+            // update caption of version button
+            version.current = _.parseInt(stats.version);
+            if (_.isNaN(version.current))
+                version.current = null;
+
+            updateVersionButton();
+
+            // announce stats update
+            emit("statsUpdate");
         }
 
         /**
@@ -315,12 +447,12 @@ define(function(require, exports, module) {
          */
         function toggleVersion(show) {
             // ensure button was initialized
-            if (versionBtn) {
+            if (version.button) {
                 // forcibly hide while presentation is on or set to hide only
                 if (presenting || !show)
-                    versionBtn.hide();
+                    version.button.hide();
                 else if (show)
-                    versionBtn.show();
+                    version.button.show();
             }
         }
 
@@ -335,11 +467,11 @@ define(function(require, exports, module) {
 
             delay = 30;
             timer = null;
-            versionBtn = null;
             fetching = false;
             stats = null;
             domain = null;
             presenting = false;
+            version = {};
         });
 
         /***** Register and define API *****/

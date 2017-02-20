@@ -1,0 +1,11 @@
+.cs50-notification {
+    background-color: chocolate;
+    color: white;
+    font-size: 14px;
+    padding: 10px;
+}
+
+.cs50-notification pre{
+    display: inline;
+    font-weight: bold;
+}
