@@ -245,51 +245,42 @@ define(function(require, exports, module) {
             if (version.interval)
                 clearInterval(version.interval);
 
-            version.interval = setInterval(fetchLatestVersion, 86400);
+            version.interval = setInterval(fetchLatestVersion, 86400000);
 
             // use the cahce if possible
             version.latest = settings.getNumber("project/cs50/info/@latestVersion") || 0;
             if (version.latest > version.current)
                 return showUpdate();
 
-            // search key prefix
-            var prefix = "ide50/2015/dists/trusty/main/binary-amd64/ide50_";
-
-            // fetch newer versions only
-            if (version.latest)
-                prefix += (version.latest + 1);
-
             // query the mirror
-            http.request("https://s3.amazonaws.com/mirror.cs50.net/", {
-                query: {
-                    prefix: prefix,
-                    delimiter: "/"
-                }
-            }, function(err, data) {
-                if (err)
-                    return console.log(err);
+            http.request(
+                "http://mirror.cs50.net/ide50/2015/dists/trusty/main/binary-amd64/Packages",
+                { contentType: "text/plain" },
+                function(err, data) {
+                    if (err)
+                        return console.log(err);
 
-                // parse XML response
-                var parser = new DOMParser();
-                var doc = parser.parseFromString(data, "application/xml");
-
-                // find latest version
-                _.forEach(doc.getElementsByTagName("Key"), function(key) {
-                    var matches = key.textContent.match(/(\d+)_amd64\.deb$/);
+                    // find latest version
+                    var matches = /Package:\s*ide50\s*\nVersion:\s*(\d+)/m.exec(data);
                     if (!matches)
                         return;
 
-                    var fetchedVersion = _.parseInt(matches[1]) || 0;
-                    if (fetchedVersion > version.latest)
+                    // parse fetched version
+                    var fetchedVersion = _.parseInt(matches[1]);
+
+                    // update latest version and cache when should
+                    if (fetchedVersion > version.latest) {
+                        // update latest version
                         version.latest = fetchedVersion;
-                });
 
-                // cache latest version
-                settings.set("project/cs50/info/@latestVersion", version.latest);
+                        // cache latest version
+                        settings.set("project/cs50/info/@latestVersion", version.latest);
+                    }
 
-                // show update notification if should
-                showUpdate(version.latest > version.current);
-            });
+                    // show update notification if should
+                    showUpdate(version.latest > version.current);
+                }
+            );
         }
 
         /**
