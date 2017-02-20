@@ -1,8 +1,8 @@
 define(function(require, exports, module) {
     main.consumes = [
-        "api", "c9", "collab.workspace", "commands", "dialog.error", "fs",
-        "http", "layout", "menus", "Plugin", "preferences", "proc", "settings",
-        "ui"
+        "api", "c9", "collab.workspace", "commands", "dialog.error",
+        "dialog.notification", "fs", "http", "layout", "menus", "Plugin",
+        "preferences", "proc", "settings", "ui"
     ];
     main.provides = ["harvard.cs50.info"];
     return main;
@@ -17,6 +17,7 @@ define(function(require, exports, module) {
         var http = imports.http;
         var layout = imports.layout;
         var menus = imports.menus;
+        var notify = imports["dialog.notification"].show;
         var prefs = imports.preferences;
         var proc = imports.proc;
         var settings = imports.settings;
@@ -284,26 +285,26 @@ define(function(require, exports, module) {
         }
 
         /**
-         * Shows or hides update notification on version button
+         * Shows or hides update notification
          *
          * @param [boolean] show whether to show or hide update notification
          */
         function showUpdate(show) {
-            if (!version.button)
-                return;
-
-            if (show === false) {
-                version.button.setAttribute("class", "cs50-version-btn");
-                version.button.setAttribute("tooltip", "");
+            if (show === false && _.isFunction(notify.hide)) {
+                notify.hide();
+                notify.hide = null;
                 return;
             }
-
-            version.button.setAttribute("class", "cs50-version-btn cs50-new-version");
-            version.button.setAttribute("tooltip", "Update available. Please run update50!");
+            else if (show !== false && !notify.hide) {
+                notify.hide = notify(
+                    '<div class="cs50-notification">An update is available for CS50 IDE. Run <pre>update50</pre> in a terminal window.</div>',
+                    true
+                );
+            }
         }
 
         /**
-         * Updates title and caption of version button and shows or hides update
+         * Updates caption of version button and shows or hides update
          * notification when should
          */
         function updateVersionButton() {
