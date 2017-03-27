@@ -255,7 +255,7 @@ define(function(require, exports, module) {
 
             // query the mirror
             http.request(
-                "http://mirror.cs50.net/ide50/2015/dists/trusty/main/binary-amd64/Packages",
+                "https://mirror.cs50.net/ide50/2015/dists/trusty/main/binary-amd64/Packages",
                 { contentType: "text/plain" },
                 function(err, data) {
                     if (err)
