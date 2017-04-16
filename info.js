@@ -1,8 +1,9 @@
 define(function(require, exports, module) {
     main.consumes = [
-        "api", "c9", "collab.workspace", "commands", "dialog.error",
-        "dialog.notification", "fs", "http", "layout", "menus", "Plugin",
-        "preferences", "proc", "settings", "ui"
+        "api", "c9", "collab.workspace", "commands", "dialog.confirm",
+        "dialog.error", "dialog.notification", "fs", "http", "layout", "menus",
+        "Plugin", "preferences", "proc", "settings", "tabManager", "terminal",
+        "ui"
     ];
     main.provides = ["harvard.cs50.info"];
     return main;
@@ -13,6 +14,7 @@ define(function(require, exports, module) {
         var api = imports.api;
         var c9 = imports.c9;
         var commands = imports.commands;
+        var confirm = imports["dialog.confirm"].show;
         var fs = imports.fs;
         var http = imports.http;
         var layout = imports.layout;
@@ -22,6 +24,8 @@ define(function(require, exports, module) {
         var proc = imports.proc;
         var settings = imports.settings;
         var showError = imports["dialog.error"].show;
+        var tabs = imports.tabManager;
+        var terminal = imports.terminal;
         var ui = imports.ui;
         var workspace = imports["collab.workspace"];
 
@@ -211,6 +215,46 @@ define(function(require, exports, module) {
                 }
             });
 
+            // add command to restart terminal sessions after update
+            commands.addCommand({
+                name: "restterms",
+                group: "Terminal",
+                hint: "Restarts all terminal sessions",
+                exec: function() {
+                    confirm("Update complete!",
+                        "Restart all terminals and reload?",
+                        "WARNING: this will kill any programs running in your terminal(s)!",
+                        function(){
+                            // find a terminal tab
+                            var term = tabs.getTabs().find(function(tab) {
+                                return tab.editorType === "terminal";
+                            });
+
+                            if (!term)
+                                return;
+
+                            // focus terminal tab
+                            tabs.focusTab(term);
+
+                            // get terminal's context menu
+                            terminal.getElement("mnuTerminal", function(e) {
+
+                                // find "Restart All Terminal Sessions"
+                                var rest = e.childNodes.find(function(item) {
+                                    return item.command === "term_restart";
+                                });
+
+                                // click it
+                                if (rest) {
+                                    rest.dispatchEvent("click");
+                                    window.location.reload();
+                                }
+                            });
+                        },
+                        function(){}
+                    );
+                }
+            }, plugin);
         }
 
         /**
