@@ -221,9 +221,21 @@ define(function(require, exports, module) {
                 group: "Terminal",
                 hint: "Restarts all terminal sessions",
                 exec: function() {
-                    confirm("Update complete!",
-                        "Restart all terminals and reload?",
-                        "WARNING: this will kill any programs running in your terminal(s)!",
+
+                    // find whether at least 2 terminals are open
+                    var count = 0;
+                    tabs.getTabs().some(function(tab) {
+                        return (tab.editorType === "terminal") && (++count === 2);
+                    });
+
+                    // determine warning based on number of terminals
+                    var warning = (count === 2)
+                        ? "Doing so will kill any programs that are running in your terminal windows."
+                        : "";
+
+                    confirm("Update almost complete",
+                        "Reload CS50 IDE and restart terminal window in order to complete update?",
+                        warning,
                         function(){
                             // find a terminal tab
                             var term = tabs.getTabs().find(function(tab) {
