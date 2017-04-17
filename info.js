@@ -230,11 +230,11 @@ define(function(require, exports, module) {
 
                     // determine warning based on number of terminals
                     var warning = (count === 2)
-                        ? "Doing so will kill any programs that are running in your terminal windows."
+                        ? "Doing so will kill any programs that are running in open terminal windows."
                         : "";
 
                     confirm("Update almost complete",
-                        "Reload CS50 IDE and restart terminal window in order to complete update?",
+                        "Reload CS50 IDE and restart terminal window" + (count == 2 ? "s" : "") + " to complete update?",
                         warning,
                         function(){
                             // find a terminal tab
