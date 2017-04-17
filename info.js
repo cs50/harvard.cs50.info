@@ -217,7 +217,7 @@ define(function(require, exports, module) {
 
             // add command to restart terminal sessions after update
             commands.addCommand({
-                name: "restterms",
+                name: "restart_terminals",
                 group: "Terminal",
                 hint: "Restarts all terminal sessions",
                 exec: function() {
