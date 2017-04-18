@@ -228,14 +228,15 @@ define(function(require, exports, module) {
                         return (tab.editorType === "terminal") && (++count === 2);
                     });
 
-                    // determine warning based on number of terminals
-                    var warning = (count === 2)
-                        ? "Doing so will kill any programs that are running in open terminal windows."
-                        : "";
-
                     confirm("Update almost complete",
                         "Reload CS50 IDE and restart terminal window" + (count == 2 ? "s" : "") + " to complete update?",
-                        warning,
+
+                        // warn based on number of terminals
+                        (count === 2)
+                            ? "Doing so will kill any programs that are running in open terminal windows."
+                            : "",
+
+                        // OK
                         function() {
                             // find a terminal tab
                             var term = tabs.getTabs().find(function(tab) {
@@ -263,6 +264,8 @@ define(function(require, exports, module) {
                                 }
                             });
                         },
+
+                        // Cancel
                         function() {}
                     );
                 }
