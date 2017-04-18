@@ -1,8 +1,9 @@
 define(function(require, exports, module) {
     main.consumes = [
-        "api", "c9", "collab.workspace", "commands", "dialog.error",
-        "dialog.notification", "fs", "http", "layout", "menus", "Plugin",
-        "preferences", "proc", "settings", "ui"
+        "api", "c9", "collab.workspace", "commands", "dialog.confirm",
+        "dialog.error", "dialog.notification", "fs", "http", "layout", "menus",
+        "Plugin", "preferences", "proc", "settings", "tabManager", "terminal",
+        "ui"
     ];
     main.provides = ["harvard.cs50.info"];
     return main;
@@ -13,6 +14,7 @@ define(function(require, exports, module) {
         var api = imports.api;
         var c9 = imports.c9;
         var commands = imports.commands;
+        var confirm = imports["dialog.confirm"].show;
         var fs = imports.fs;
         var http = imports.http;
         var layout = imports.layout;
@@ -22,6 +24,8 @@ define(function(require, exports, module) {
         var proc = imports.proc;
         var settings = imports.settings;
         var showError = imports["dialog.error"].show;
+        var tabs = imports.tabManager;
+        var terminal = imports.terminal;
         var ui = imports.ui;
         var workspace = imports["collab.workspace"];
 
@@ -181,12 +185,12 @@ define(function(require, exports, module) {
                     fetching = true;
 
                     // write .info50
-                    fs.writeFile(path, content, function(err){
+                    fs.writeFile(path, content, function(err) {
                         if (err)
                             return console.error(err);
 
                         // make .info50 world-executable
-                        fs.chmod(path, 755, function(err){
+                        fs.chmod(path, 755, function(err) {
                             if (err)
                                 return console.error(err);
 
@@ -211,6 +215,61 @@ define(function(require, exports, module) {
                 }
             });
 
+            // add command to restart terminal sessions after update
+            commands.addCommand({
+                name: "restart_terminals",
+                group: "Terminal",
+                hint: "Restarts all terminal sessions",
+                exec: function() {
+
+                    // find whether at least 2 terminals are open
+                    var count = 0;
+                    tabs.getTabs().some(function(tab) {
+                        return (tab.editorType === "terminal") && (++count === 2);
+                    });
+
+                    confirm("Update almost complete",
+                        "Reload CS50 IDE and restart terminal window" + (count == 2 ? "s" : "") + " to complete update?",
+
+                        // warn based on number of terminals
+                        (count === 2)
+                            ? "Doing so will kill any programs that are running in open terminal windows."
+                            : "",
+
+                        // OK
+                        function() {
+                            // find a terminal tab
+                            var term = tabs.getTabs().find(function(tab) {
+                                return tab.editorType === "terminal";
+                            });
+
+                            if (!term)
+                                return;
+
+                            // focus terminal tab
+                            tabs.focusTab(term);
+
+                            // get terminal's context menu
+                            terminal.getElement("mnuTerminal", function(e) {
+
+                                // find "Restart All Terminal Sessions"
+                                var rest = e.childNodes.find(function(item) {
+                                    return item.command === "term_restart";
+                                });
+
+                                // click it
+                                if (rest) {
+                                    rest.dispatchEvent("click");
+                                    window.location.reload();
+                                }
+                            });
+                        },
+
+                        // Cancel
+                        function() {}
+                    );
+                }
+            }, plugin);
         }
 
         /**
