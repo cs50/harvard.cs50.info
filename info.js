@@ -185,12 +185,12 @@ define(function(require, exports, module) {
                     fetching = true;
 
                     // write .info50
-                    fs.writeFile(path, content, function(err){
+                    fs.writeFile(path, content, function(err) {
                         if (err)
                             return console.error(err);
 
                         // make .info50 world-executable
-                        fs.chmod(path, 755, function(err){
+                        fs.chmod(path, 755, function(err) {
                             if (err)
                                 return console.error(err);
 
@@ -236,7 +236,7 @@ define(function(require, exports, module) {
                     confirm("Update almost complete",
                         "Reload CS50 IDE and restart terminal window" + (count == 2 ? "s" : "") + " to complete update?",
                         warning,
-                        function(){
+                        function() {
                             // find a terminal tab
                             var term = tabs.getTabs().find(function(tab) {
                                 return tab.editorType === "terminal";
@@ -263,7 +263,7 @@ define(function(require, exports, module) {
                                 }
                             });
                         },
-                        function(){}
+                        function() {}
                     );
                 }
             }, plugin);
