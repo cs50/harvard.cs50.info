@@ -148,16 +148,6 @@ define(function(require, exports, module) {
             var div = new ui.divider();
             menus.addItemByPath("Cloud9/div", div, 100, plugin);
 
-            // creates the "phpMyAdmin" item
-            var phpMyAdmin = new ui.item({
-                id: "phpmyadmin",
-                caption: "phpMyAdmin",
-                onclick: openPHPMyAdmin
-            });
-
-            // places it in CS50 IDE tab
-            menus.addItemByPath("Cloud9/phpMyAdmin", phpMyAdmin, 101, plugin);
-
             // creates the "Web Server" item
             var webServer = new ui.item({
                 id: "websserver",
@@ -387,20 +377,6 @@ define(function(require, exports, module) {
 
             // update caption
             version.button.setCaption("v" + version.current);
-        }
-
-        /**
-         * Opens PHP My Admin, logged in, in a new window/tab
-         */
-        function openPHPMyAdmin() {
-            if(!stats || !stats.hasOwnProperty("host")) {
-                // rewrite .info50 on reload
-                settings.set(VERSION_PATH, 0);
-                return showError("Error opening phpMyAdmin. Try reloading the IDE!");
-            }
-
-            var pma = stats.host + '/phpmyadmin';
-            window.open("//" + stats.user + ":" + stats.passwd + "@" + pma);
         }
 
         /**
