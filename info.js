@@ -32,6 +32,7 @@ define(function(require, exports, module) {
         var _ = require("lodash");
 
         var INFO_VER = 1;
+        var UPDATE_VER = 1;
 
         /***** Initialization *****/
 
@@ -157,6 +158,36 @@ define(function(require, exports, module) {
 
             // places it in CS50 IDE tab
             menus.addItemByPath("Cloud9/Web Server", webServer, 102, plugin);
+
+            // write update script
+            var update_path = BIN + "update50";
+            fs.exists(update_path, function(exists) {
+
+                // fetch script revision number from settings
+                var ver = settings.getNumber("project/cs50/info/@update_version") || 0;
+
+                // write script if not exists or updated
+                if (!exists || ver < UPDATE_VERSION) {
+
+                    // load script contents
+                    var content = require("text!./bin/update50");
+
+                    // write script
+                    fs.writeFile(update_path, content, function(err) {
+                        if (err)
+                            return showError("Failed to write update50");
+
+                        // chmod script
+                        fs.chmod(update_path, 755, function(err) {
+                            if (err)
+                                return showError("Failed to chmod update50");
+
+                            // update revision number in settings
+                            settings.set("project/cs50/info/@update_version", UPDATE_VERSION);
+                        });
+                    });
+                }
+            });
 
             // .info50's path
             var path = BIN + ".info50";

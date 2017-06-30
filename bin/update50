@@ -1,0 +1,19 @@
+#!/bin/bash
+
+# redirect output of all commands to $LOG
+LOG=/home/ubuntu/lib/ide50.log
+exec > >(sudo tee "$LOG")
+
+echo -e "\nDO NOT CLOSE THIS WINDOW OR PUT YOUR COMPUTER TO SLEEP <3\n"
+sleep 2
+
+echo -e "\n\n\nUpdate50 - $(date -R)"
+
+# curl latest update50 script, passing in any command-line args
+curl -H 'Cache-Control: no-cache' -sL https://gist.github.com/kzidane/a29a2a8fdb27b12a64618ced18504193/raw/ | bash -s $@
+
+if [ $? -ne 0 ]
+then
+    echo "Something went wrong! The output has been logged in $LOG"
+    exit 1
+fi
