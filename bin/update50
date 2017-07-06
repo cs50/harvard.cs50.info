@@ -2,7 +2,7 @@
 
 # redirect output of all commands to $LOG
 LOG=/home/ubuntu/lib/ide50.log
-exec > >(sudo tee "$LOG")
+exec > >(sudo tee -a "$LOG")
 
 echo -e "\nDO NOT CLOSE THIS WINDOW OR PUT YOUR COMPUTER TO SLEEP <3\n"
 sleep 2
