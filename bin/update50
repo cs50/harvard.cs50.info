@@ -10,7 +10,7 @@ sleep 2
 echo -e "\n\n\nUpdate50 - $(date -R)"
 
 # curl latest update50 script, passing in any command-line args
-curl -H 'Cache-Control: no-cache' -sL https://gist.github.com/kzidane/a29a2a8fdb27b12a64618ced18504193/raw/ | bash -s $@
+curl -H 'Cache-Control: no-cache' -sL https://cs50.ly/update50 | bash -s $@
 
 if [ $? -ne 0 ]
 then
