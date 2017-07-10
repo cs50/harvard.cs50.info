@@ -7,19 +7,28 @@
       "email": "danallan@cs.harvard.edu"
     },
     {
-      "name": "Dan Bradley",
+      "name": "Dan Bradley"
     },
     {
-      "name": "Dino Rodriguez",
+      "name": "Dino Rodriguez"
     },
     {
-      "name": "Victor Domene",
+      "name": "Victor Domene"
     },
     {
       "name": "David J. Malan",
       "email": "malan@harvard.edu"
+    },
+    {
+      "name": "Kareem Zidane",
+      "email": "kzidane@cs50.harvard.edu"
     }
   ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/cs50/harvard.cs50.info.git"
+  },
+  "categories": [ "miscellaneous" ],
   "name": "harvard.cs50.info",
   "plugins": {
     "info": {}

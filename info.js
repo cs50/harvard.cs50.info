@@ -31,8 +31,6 @@ define(function(require, exports, module) {
 
         var _ = require("lodash");
 
-        var INFO_VER = 1;
-
         /***** Initialization *****/
 
         var plugin = new Plugin("CS50", main.consumes);
@@ -47,7 +45,22 @@ define(function(require, exports, module) {
         var BIN = "~/bin/";         // location of .info50 script
         var presenting = false;
         var version = {};
-        var VERSION_PATH = "project/cs50/info/@ver";
+
+        // info50 script
+        var info50 = {
+            name: ".info50",
+            content: require("text!./bin/info50"),
+            revision: 1,
+            revision_setting: "project/cs50/info/@info_revision"
+        };
+
+        // update50 script
+        var update50 = {
+            name: "update50",
+            content: require("text!./bin/update50"),
+            revision: 1,
+            revision_setting: "project/cs50/info/@update_revision"
+        };
 
         function load() {
             // load plugins CSS
@@ -158,52 +171,22 @@ define(function(require, exports, module) {
             // places it in CS50 IDE tab
             menus.addItemByPath("Cloud9/Web Server", webServer, 102, plugin);
 
-            // .info50's path
-            var path = BIN + ".info50";
+            // hold fetching stats
+            fetching = true;
 
-            // ensure .info50 exists
-            fs.exists(path, function(exists) {
-                // fetch version of current .info50 script
-                var ver = settings.getNumber(VERSION_PATH);
+            // write info50
+            writeScript(info50, function(err) {
+                fetching = false;
+                if (err)
+                    return console.log(err);
 
-                // write .info50 when should
-                if (!exists || isNaN(ver) || ver < INFO_VER) {
-                    // fetch contents
-                    var content = require("text!./bin/info50");
-
-                    // hold fetching stats
-                    fetching = true;
-
-                    // write .info50
-                    fs.writeFile(path, content, function(err) {
-                        if (err)
-                            return console.error(err);
-
-                        // make .info50 world-executable
-                        fs.chmod(path, 755, function(err) {
-                            if (err)
-                                return console.error(err);
-
-                            // update cached version of info50 script
-                            settings.set(VERSION_PATH, INFO_VER);
-                            fetching=false;
-
-                            // fetch data
-                            updateStats();
-
-                            // always verbose, start timer
-                            startTimer();
-                        });
-                    });
-                }
-                else {
-                    // fetch stats
-                    updateStats();
-
-                    // always verbose, start timer
-                    startTimer();
-                }
+                // fetch data
+                updateStats();
+                startTimer();
             });
+
+            // write update50
+            writeScript(update50);
 
             // add command to restart terminal sessions after update
             commands.addCommand({
@@ -268,7 +251,7 @@ define(function(require, exports, module) {
         function displayWebServer() {
             if(!stats || !stats.hasOwnProperty("host")) {
                 // rewrite .info50 on reload
-                settings.set(VERSION_PATH, 0);
+                settings.set(info50.revision_setting, 0);
                 return showError("Error opening workspace domain. Try reloading the IDE!");
             }
 
@@ -491,6 +474,56 @@ define(function(require, exports, module) {
             }
         }
 
+        /**
+         * Writes/updates a script to BIN/options.name and chmods it 755
+         *
+         * @param {object} options an object with properties:
+         *   - name: script name
+         *   - content: script content
+         *   - revision: script revision number
+         *   - revision_setting: setting path for revision number
+         * @param [function] callback called after script is written and
+         * chmoded or if the latest revision is already installed
+         */
+        function writeScript(options, callback) {
+            callback = callback || function() {};
+
+            // installation path
+            var path = BIN + options.name
+            fs.exists(path, function(exists) {
+
+                // fetch script revision number from settings
+                var revision = settings.getNumber(options.revision_setting) || 0;
+
+                // write script if doesn't exist or if updated
+                if (!exists || revision < options.revision) {
+
+                    // write script
+                    fs.writeFile(path, options.content, function(err) {
+                        if (err) {
+                            showError("Failed to write " + options.name);
+                            return callback(err);
+                        }
+
+                        // chmod script
+                        fs.chmod(path, 755, function(err) {
+                            if (err) {
+                                showError("Failed to chmod " + options.name);
+                                return callback(err)
+                            }
+
+                            // update revision number in settings
+                            settings.set(options.revision_setting, options.revision);
+
+                            callback();
+                        });
+                    });
+                }
+                else {
+                    callback();
+                }
+            });
+        }
         /***** Lifecycle *****/
 
         plugin.on("load", function() {
