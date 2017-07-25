@@ -58,7 +58,7 @@ define(function(require, exports, module) {
         var update50 = {
             name: "update50",
             content: require("text!./bin/update50"),
-            revision: 1,
+            revision: 2,
             revision_setting: "project/cs50/info/@update_revision"
         };
 

@@ -1,7 +1,15 @@
 #!/bin/bash
 
 # redirect output of all commands to $LOG
-LOG=/home/ubuntu/lib/ide50.log
+mkdir -p /home/ubuntu/.cs50/logs
+LOG=/home/ubuntu/.cs50/logs/update50.log
+
+# merge old log file (if exists)
+if [ -f /home/ubuntu/lib/ide50.log ]; then
+    mv /home/ubuntu/lib/ide50.log $LOG &>/dev/null
+    rm -f /home/ubuntu/lib/ide50.log &>/dev/null
+fi
+
 exec > >(sudo tee -a "$LOG")
 
 echo -e "\nDO NOT CLOSE THIS WINDOW OR PUT YOUR COMPUTER TO SLEEP <3\n"
