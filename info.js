@@ -42,7 +42,7 @@ define(function(require, exports, module) {
         var stats = null;           // last recorded stats
         var timer = null;           // javascript interval ID
         var domain = null;          // current domain
-        var BIN = "~/bin/";         // location of .info50 script
+        var BIN = "~/.cs50/bin/";
         var presenting = false;
         var version = {};
 
@@ -50,7 +50,7 @@ define(function(require, exports, module) {
         var info50 = {
             name: ".info50",
             content: require("text!./bin/info50"),
-            revision: 1,
+            revision: 2,
             revision_setting: "project/cs50/info/@info_revision"
         };
 
