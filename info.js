@@ -315,7 +315,7 @@ define(function(require, exports, module) {
             }
             else if (show !== false && !notify.hide) {
                 notify.hide = notify(
-                    '<div class="cs50-notification">An update is available for CS50 IDE. Run <pre>update50</pre> in a terminal window.</div>',
+                    '<div class="cs50-info-update">An update is available for CS50 IDE. Run <pre>update50</pre> in a terminal window.</div>',
                     true
                 );
             }
