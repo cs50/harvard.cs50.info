@@ -53,7 +53,7 @@ if [ $# -eq 3 ]; then
         touch -d "+$3 seconds" $CFILE
 
         # set domain based on master
-        echo "domain=\"$1\"" >$STATS_DIR/.domain50
+        echo "domain=\"$1\"" >$STATS_DIR/domain
     else
         # requestor is not master; clean up
         rm -f $NEW_CFILE
