@@ -22,8 +22,8 @@ offline=$([ ${IDE_OFFLINE+x} ] && echo "true" || echo "false")
 # - If the new client ID matches the existing "master" client ID, we extend
 #   the modification time into the future, based on when the client expects
 #   to contact us again.
-CFILE=$STATS_DIR/.client50
-NEW_CFILE=$STATS_DIR/.client50_new
+CFILE=$STATS_DIR/client
+NEW_CFILE=$STATS_DIR/client_new
 
 check_port(){
     # ask lsof if port 8080 is open, will return 0 if so, 1 otherwise
