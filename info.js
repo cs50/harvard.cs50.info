@@ -211,10 +211,17 @@ define(function(require, exports, module) {
 
                         // OK
                         function() {
+
+                            // restart all terminal sessions
                             proc.spawn("killall", { args: ["tmux"] }, function(err) {
                                 if (err)
                                     showError("Failed to restart terminals!");
+
+                                // reload browser tab
+                                window.location.reload();
                             });
+
+
                         },
 
                         // Cancel
