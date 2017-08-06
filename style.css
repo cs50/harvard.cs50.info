@@ -5,7 +5,6 @@
     padding: 10px;
 }
 
-.cs50-info-update pre {
-    display: inline;
+.cs50-info-update code {
     font-weight: bold;
 }
