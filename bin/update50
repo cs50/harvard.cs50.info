@@ -2,11 +2,11 @@
 
 # redirect output of all commands to $LOG
 mkdir -p /home/ubuntu/.cs50/logs
-LOG=/home/ubuntu/.cs50/logs/update50.log
+LOG="/home/ubuntu/.cs50/logs/update50.log"
 
 # merge old log file (if exists)
 if [ -f /home/ubuntu/lib/ide50.log ]; then
-    mv /home/ubuntu/lib/ide50.log $LOG &>/dev/null
+    mv /home/ubuntu/lib/ide50.log "$LOG" &>/dev/null
     rm -f /home/ubuntu/lib/ide50.log &>/dev/null
 fi
 
