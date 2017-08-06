@@ -42,7 +42,7 @@ define(function(require, exports, module) {
         var stats = null;           // last recorded stats
         var timer = null;           // javascript interval ID
         var domain = null;          // current domain
-        var BIN = "~/bin/";         // location of .info50 script
+        var BIN = "~/.cs50/bin/";
         var presenting = false;
         var version = {};
 
@@ -50,7 +50,7 @@ define(function(require, exports, module) {
         var info50 = {
             name: ".info50",
             content: require("text!./bin/info50"),
-            revision: 1,
+            revision: 2,
             revision_setting: "project/cs50/info/@info_revision"
         };
 
@@ -58,7 +58,7 @@ define(function(require, exports, module) {
         var update50 = {
             name: "update50",
             content: require("text!./bin/update50"),
-            revision: 1,
+            revision: 2,
             revision_setting: "project/cs50/info/@update_revision"
         };
 
@@ -315,7 +315,7 @@ define(function(require, exports, module) {
             }
             else if (show !== false && !notify.hide) {
                 notify.hide = notify(
-                    '<div class="cs50-notification">An update is available for CS50 IDE. Run <pre>update50</pre> in a terminal window.</div>',
+                    '<div class="cs50-info-update">An update is available for CS50 IDE. Run <pre>update50</pre> in a terminal window.</div>',
                     true
                 );
             }

@@ -1,11 +1,11 @@
-.cs50-notification {
-    background-color: chocolate;
+.cs50-info-update {
+    background-color: #f1c40f;
     color: white;
     font-size: 14px;
     padding: 10px;
 }
 
-.cs50-notification pre{
+.cs50-info-update pre {
     display: inline;
     font-weight: bold;
 }
