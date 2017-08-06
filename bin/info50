@@ -1,7 +1,7 @@
 #!/bin/bash
 
-STATS_DIR=/home/ubuntu/.cs50/stats
-mkdir -p $STATS_DIR
+STATS_DIR="/home/ubuntu/.cs50/stats"
+mkdir -p "$STATS_DIR"
 
 # find ide version
 source /etc/version50 2>/dev/null
@@ -22,8 +22,8 @@ offline=$([ ${IDE_OFFLINE+x} ] && echo "true" || echo "false")
 # - If the new client ID matches the existing "master" client ID, we extend
 #   the modification time into the future, based on when the client expects
 #   to contact us again.
-CFILE=$STATS_DIR/client
-NEW_CFILE=$STATS_DIR/client_new
+CFILE="$STATS_DIR/client"
+NEW_CFILE="$STATS_DIR/client_new"
 
 check_port(){
     # ask lsof if port 8080 is open, will return 0 if so, 1 otherwise
@@ -40,23 +40,23 @@ check_port(){
 # request from a stats client to update the domain
 if [ $# -eq 3 ]; then
     # fetch existing client ID, if it exists
-    test -f $CFILE && source $CFILE &>/dev/null
+    test -f "$CFILE" && source "$CFILE" &>/dev/null
 
     # store the requesting client ID in a new client file
-    echo "client=\"$2\"" >$NEW_CFILE
+    echo "client=\"$2\"" >"$NEW_CFILE"
 
     # test if requestor becomes master
-    if [ ! -f $CFILE ] || [ $NEW_CFILE -nt $CFILE ] || [ "$2" == "$client" ]
+    if [ ! -f "$CFILE" ] || [ "$NEW_CFILE" -nt "$CFILE" ] || [ "$2" == "$client" ]
     then
         # make requestor the new master and extend modification time into future
-        mv $NEW_CFILE $CFILE
-        touch -d "+$3 seconds" $CFILE
+        mv "$NEW_CFILE" "$CFILE"
+        touch -d "+$3 seconds" "$CFILE"
 
         # set domain based on master
-        echo "domain=\"$1\"" >$STATS_DIR/domain
+        echo "domain=\"$1\"" >"$STATS_DIR/domain"
     else
         # requestor is not master; clean up
-        rm -f $NEW_CFILE
+        rm -f "$NEW_CFILE"
     fi
     check_port
     # give the expect JSON output
