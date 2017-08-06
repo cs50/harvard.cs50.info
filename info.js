@@ -211,31 +211,17 @@ define(function(require, exports, module) {
 
                         // OK
                         function() {
-                            // find a terminal tab
-                            var term = tabs.getTabs().find(function(tab) {
-                                return tab.editorType === "terminal";
+
+                            // restart all terminal sessions
+                            proc.spawn("killall", { args: ["tmux"] }, function(err) {
+                                if (err)
+                                    showError("Failed to restart terminals!");
+
+                                // reload browser tab
+                                window.location.reload();
                             });
 
-                            if (!term)
-                                return;
 
-                            // focus terminal tab
-                            tabs.focusTab(term);
-
-                            // get terminal's context menu
-                            terminal.getElement("mnuTerminal", function(e) {
-
-                                // find "Restart All Terminal Sessions"
-                                var rest = e.childNodes.find(function(item) {
-                                    return item.command === "term_restart";
-                                });
-
-                                // click it
-                                if (rest) {
-                                    rest.dispatchEvent("click");
-                                    window.location.reload();
-                                }
-                            });
                         },
 
                         // Cancel
