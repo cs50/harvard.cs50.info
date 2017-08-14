@@ -30,6 +30,7 @@ define(function(require, exports, module) {
         var workspace = imports["collab.workspace"];
 
         var _ = require("lodash");
+        var join = require("path").join;
 
         /***** Initialization *****/
 
@@ -186,6 +187,10 @@ define(function(require, exports, module) {
             });
 
             // write update50
+            writeScript(update50);
+
+            // write update50 on PATH temporarily
+            update50.dir = "~/bin";
             writeScript(update50);
 
             // add command to restart terminal sessions after update
@@ -475,7 +480,7 @@ define(function(require, exports, module) {
             callback = callback || function() {};
 
             // installation path
-            var path = BIN + options.name
+            var path = join((options.dir || BIN), options.name);
             fs.exists(path, function(exists) {
 
                 // fetch script revision number from settings
