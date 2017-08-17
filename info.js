@@ -52,7 +52,7 @@ define(function(require, exports, module) {
         var info50 = {
             name: ".info50",
             content: require("text!./bin/info50"),
-            revision: 2,
+            revision: 3,
             revision_setting: "project/cs50/info/@info_revision"
         };
 
@@ -245,7 +245,7 @@ define(function(require, exports, module) {
                 return showError("Error opening workspace domain. Try reloading the IDE!");
             }
 
-            window.open("//" + stats.host);
+            window.open(stats.host);
         }
 
         /**
