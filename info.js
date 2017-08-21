@@ -1,9 +1,9 @@
 define(function(require, exports, module) {
     main.consumes = [
-        "api", "c9", "collab.workspace", "commands", "dialog.confirm",
-        "dialog.error", "dialog.notification", "fs", "http", "layout", "menus",
-        "Plugin", "preferences", "proc", "settings", "tabManager", "terminal",
-        "ui"
+        "api", "c9", "collab.workspace", "commands", "dialog.alert",
+        "dialog.confirm", "dialog.error", "dialog.notification", "fs", "http",
+        "layout", "menus", "Plugin", "preferences", "proc", "settings",
+        "tabManager", "terminal", "ui"
     ];
     main.provides = ["harvard.cs50.info"];
     return main;
@@ -11,6 +11,7 @@ define(function(require, exports, module) {
     function main(options, imports, register) {
         var Plugin = imports.Plugin;
 
+        var alert = imports["dialog.alert"].show;
         var api = imports.api;
         var c9 = imports.c9;
         var commands = imports.commands;
@@ -193,45 +194,43 @@ define(function(require, exports, module) {
             update50.dir = "~/bin";
             writeScript(update50);
 
-            // add command to restart terminal sessions after update
+            // add command to restart workspace online or instruct user to restart offline
             commands.addCommand({
-                name: "restart_terminals",
-                group: "Terminal",
-                hint: "Restarts all terminal sessions",
+                name: "complete_update",
+                hint: "Restarts workspace after confirmation",
                 exec: function() {
 
-                    // find whether at least 2 terminals are open
-                    var count = 0;
-                    tabs.getTabs().some(function(tab) {
-                        return (tab.editorType === "terminal") && (++count === 2);
-                    });
+                    if (c9.hosted) {
 
-                    confirm("Update almost complete",
-                        "Reload CS50 IDE and restart terminal window" + (count == 2 ? "s" : "") + " to complete update?",
+                        // make API call to restart container online
+                        confirm(
+                            "Update almost complete",
+                            "Restart your workspace to complete update?",
+                            "",
 
-                        // warn based on number of terminals
-                        (count === 2)
-                            ? "Doing so will kill any programs that are running in open terminal windows."
-                            : "",
-
-                        // OK
-                        function() {
-
-                            // restart all terminal sessions
-                            proc.spawn("killall", { args: ["tmux"] }, function(err) {
-                                if (err)
-                                    showError("Failed to restart terminals!");
-
-                                // reload browser tab
+                            // OK
+                            function() {
+                                commands.exec("restartc9vm");
                                 window.location.reload();
-                            });
+                            },
 
+                            // Cancel
+                            function() {}
+                        );
+                    }
+                    else {
 
-                        },
-
-                        // Cancel
-                        function() {}
-                    );
+                        // user has to restart container manually offline
+                        alert(
+                            "Update almost complete",
+                            'Run <code style="font: 14px monospace; padding: 0 5px">docker restart ide50</code> in your ' +
+                                "computer's terminal or Docker QuickStart " +
+                                "Terminal to complete the update!",
+                            "",
+                            function() {},
+                            { isHTML: true }
+                        );
+                    }
                 }
             }, plugin);
         }
