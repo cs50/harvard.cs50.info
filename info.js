@@ -204,7 +204,7 @@ define(function(require, exports, module) {
 
                         // make API call to restart container online
                         confirm(
-                            "Update almost complete",
+                            "Update Almost Complete",
                             "Restart your workspace to complete update?",
                             "",
 
