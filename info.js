@@ -206,7 +206,7 @@ define(function(require, exports, module) {
                         confirm(
                             "Update Almost Complete",
                             "Restart your workspace to complete update?",
-                            "",
+                            "Any files you have open will stay open.",
 
                             // OK
                             function() {
