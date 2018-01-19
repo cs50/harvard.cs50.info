@@ -19,9 +19,3 @@ echo -e "update50 - $(date -R)"
 
 # curl latest update50 script, passing in any command-line args
 curl -H 'Cache-Control: no-cache' -sL https://cs50.ly/update50 | bash -s $@
-
-if [ $? -ne 0 ]
-then
-    echo "Something went wrong! The output has been logged in $LOG"
-    exit 1
-fi
