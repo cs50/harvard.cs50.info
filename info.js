@@ -1,9 +1,9 @@
 define(function(require, exports, module) {
     main.consumes = [
         "api", "c9", "collab.workspace", "commands", "dialog.alert",
-        "dialog.confirm", "dialog.error", "dialog.notification", "fs", "http",
-        "layout", "menus", "Plugin", "preferences", "proc", "settings",
-        "tabManager", "terminal", "ui"
+        "dialog.confirm", "dialog.error", "dialog.notification", "fs",
+        "harvard.cs50.presentation", "http", "layout", "menus", "Plugin",
+        "preferences", "proc", "settings", "tabManager", "terminal", "ui"
     ];
     main.provides = ["harvard.cs50.info"];
     return main;
@@ -22,6 +22,7 @@ define(function(require, exports, module) {
         var menus = imports.menus;
         var notify = imports["dialog.notification"].show;
         var prefs = imports.preferences;
+        const presentation = imports["harvard.cs50.presentation"];
         var proc = imports.proc;
         var settings = imports.settings;
         var showError = imports["dialog.error"].show;
@@ -45,7 +46,6 @@ define(function(require, exports, module) {
         var timer = null;           // javascript interval ID
         var domain = null;          // current domain
         var BIN = "~/.cs50/bin/";
-        var presenting = false;
         var version = {};
 
         // info50 script
@@ -127,20 +127,7 @@ define(function(require, exports, module) {
                 name: "preferences"
             }), version.button, 500, plugin);
 
-            // cache whether presentation is on initially
-            presenting = settings.getBool("user/cs50/presentation/@presenting");
-
-            // set visibility of version number initially
-            toggleVersion(!presenting);
-
-            // handle toggling presentation
-            settings.on("user/cs50/presentation/@presenting", function(newVal) {
-                 // cache setting
-                presenting = newVal;
-
-                // toggle visibility of version number
-                toggleVersion(!presenting);
-            }, plugin);
+            presentation.addListener(presenting => toggleVersion(!presenting));
 
             // Add preference pane
             prefs.add({
@@ -457,10 +444,10 @@ define(function(require, exports, module) {
             // ensure button was initialized
             if (version.button) {
                 // forcibly hide while presentation is on or set to hide only
-                if (presenting || !show)
-                    version.button.hide();
-                else if (show)
+                if (show)
                     version.button.show();
+                else
+                    version.button.hide();
             }
         }
 
@@ -528,7 +515,6 @@ define(function(require, exports, module) {
             fetching = false;
             stats = null;
             domain = null;
-            presenting = false;
             version = {};
         });
 
