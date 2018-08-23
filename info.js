@@ -1,6 +1,6 @@
 define(function(require, exports, module) {
     main.consumes = [
-        "api", "c9", "collab.workspace", "commands", "dialog.alert",
+        "api", "c9", "collab.environment", "commands", "dialog.alert",
         "dialog.confirm", "dialog.error", "dialog.notification", "fs",
         "harvard.cs50.presentation", "http", "layout", "menus", "Plugin",
         "preferences", "proc", "settings", "tabManager", "terminal", "ui"
@@ -29,7 +29,7 @@ define(function(require, exports, module) {
         var tabs = imports.tabManager;
         var terminal = imports.terminal;
         var ui = imports.ui;
-        var workspace = imports["collab.workspace"];
+        var workspace = imports["collab.environment"];
 
         var _ = require("lodash");
         var join = require("path").join;
@@ -362,14 +362,16 @@ define(function(require, exports, module) {
          * Updates the shared status (public or private).
          */
         function fetchSharedStatus() {
-            api.project.get("", function(err, data) {
-                if (err || workspace.myUserId != data.owner.id)
+            workspace.loadMembers({}, function() {
+                var members = workspace.members
+                // there is no equivalent for appAccess and visibility :(
+                /*if (err || workspace.myUserId != data.owner.id)
                     return;
-
                 settings.set(
                     "project/cs50/info/@public",
                     data["visibility"] === "public" || data["appAccess"] === "public"
                 );
+                );*/
             });
         }
 
