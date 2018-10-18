@@ -4,5 +4,5 @@ set -o pipefail
 
 # curl latest update50 script, passing in any command-line args
 if ! bash <(curl --fail --header 'Cache-Control: no-cache' --silent --location https://cs50.ly/update50) $@; then
-    echo "Unable to update workspace. Try again in a few minutes!"
+    echo "Unable to update workspace."
 fi
