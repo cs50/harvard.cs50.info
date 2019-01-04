@@ -74,8 +74,7 @@ define(function(require, exports, module) {
             domain = window.location.hostname;
 
             // we only want the domain; e.g., "cs50.io" from "ide.cs50.io"
-            if (domain.substring(0, 3) === "ide")
-                domain = domain.substring(4);
+            domain = domain.replace(/^(ide|legacy)\./, "")
 
             // set default values
             settings.on("read", function() {
